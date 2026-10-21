@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- What an app references to call through Postern. Plain net10.0 so cross-platform apps (Perch) can reference it
+       from shared code; it only works on Windows and says so (IsAvailable = false elsewhere). No dependency on
+       Postern.Core or the broker: the wire contract is small and mirrored here. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Postern.Client</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Shared\PipeProcess.cs" Link="Interop\PipeProcess.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Postern.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.13" />
+  </ItemGroup>
+
+</Project>

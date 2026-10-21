@@ -13,11 +13,18 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- For the fake upstream the broker forwards to. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Postern.Core\Postern.Core.csproj" />
+    <ProjectReference Include="..\..\src\Postern.Broker\Postern.Broker.csproj" />
+    <ProjectReference Include="..\..\src\Postern.Client\Postern.Client.csproj" />
   </ItemGroup>
 
 </Project>
