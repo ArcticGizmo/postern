@@ -45,6 +45,11 @@ public sealed class PosternHandler(PosternClient client, HttpMessageHandler inne
         }
     }
 
+    // HttpClient.Send (sync) calls this, not SendAsync. DelegatingHandler's default would pass straight to the inner
+    // handler and skip the host check, the token and the retry above, so route it through the same path.
+    protected override HttpResponseMessage Send(HttpRequestMessage request, CancellationToken cancellationToken) =>
+        SendAsync(request, cancellationToken).GetAwaiter().GetResult();
+
     static bool IsConnectFailure(HttpRequestException ex) =>
         ex.HttpRequestError == HttpRequestError.ConnectionError && ex.InnerException is not PosternVerificationException;
 }

@@ -45,6 +45,16 @@ public class ProxyTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task SynchronousSendGoesThroughTheSameChecks()
+    {
+        using var client = await _h.RegisteredClient("GET fake/echo");
+        using var http = client.CreateHttpClient("fake");
+        using var ok = http.Send(new HttpRequestMessage(HttpMethod.Get, "echo"));
+        Assert.Equal(HttpStatusCode.OK, ok.StatusCode); // token attached on the sync path too
+        Assert.Throws<HttpRequestException>(() => http.Send(new HttpRequestMessage(HttpMethod.Get, "https://codeload.example/x")));
+    }
+
+    [Fact]
     public async Task NoTokenNeverReachesUpstream()
     {
         using var client = _h.Client();
