@@ -18,7 +18,7 @@ internal sealed class AuditWindow : Window
     {
         _broker = broker;
         Title = "Postern: audit log";
-        Width = 1000;
+        Width = 1080;
         Height = 640;
         Background = Ui.Background;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;

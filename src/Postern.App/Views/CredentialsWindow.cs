@@ -70,26 +70,36 @@ internal sealed class CredentialsWindow : Window
         {
             PasswordChar = '•',
             PlaceholderText = provider.Name == "github" ? "Paste a fine-grained personal access token" : "Paste the secret",
-            IsVisible = false,
             FontFamily = Ui.Mono,
         };
         var save = Ui.Button("Save", () => { }, primary: true);
-        save.IsVisible = false;
-        var message = Ui.Text("", Ui.Muted, 12);
+        var message = Ui.Text("", Ui.Warning, 12);
+        message.IsVisible = false;
+
+        var entryRow = new DockPanel { LastChildFill = true, IsVisible = false };
+        DockPanel.SetDock(save, Dock.Right);
+        save.Margin = new Thickness(8, 0, 0, 0);
+        entryRow.Children.Add(save);
+        entryRow.Children.Add(entry);
+
+        void Say(string text)
+        {
+            message.Text = text;
+            message.IsVisible = true;
+        }
 
         var set = Ui.Button(stored ? "Replace" : "Set", () =>
         {
-            entry.IsVisible = true;
-            save.IsVisible = true;
+            entryRow.IsVisible = true;
             entry.Focus();
         });
         save.Click += (_, _) =>
         {
-            var secret = entry.Text?.Trim().Trim('﻿') ?? "";
+            var secret = entry.Text?.Trim().Trim((char)0xFEFF) ?? ""; // a pasted BOM is invisible but breaks the header
             entry.Text = "";
             if (ProviderDefinition.CheckSecret(secret) is { } problem)
             {
-                message.Text = $"Not saved: the secret {problem}.";
+                Say($"Not saved: the secret {problem}.");
                 return;
             }
             try
@@ -99,7 +109,7 @@ internal sealed class CredentialsWindow : Window
             }
             catch (Exception ex)
             {
-                message.Text = "Couldn't save: " + ex.Message;
+                Say("Couldn't save: " + ex.Message);
             }
         };
         var remove = Ui.Button("Remove", () =>
@@ -122,12 +132,6 @@ internal sealed class CredentialsWindow : Window
                 Ui.Code($"{provider.BaseUrl} ({provider.Auth.ToString().ToLowerInvariant()} auth)", Ui.Muted),
             },
         });
-
-        var entryRow = new DockPanel { LastChildFill = true };
-        DockPanel.SetDock(save, Dock.Right);
-        save.Margin = new Thickness(8, 0, 0, 0);
-        entryRow.Children.Add(save);
-        entryRow.Children.Add(entry);
 
         return Ui.Card(new StackPanel
         {

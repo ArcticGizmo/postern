@@ -15,8 +15,8 @@ internal static class Program
     public const int ExitBrokerFailed = 4;
 
     /// <summary>Set before Avalonia starts; the App reads it.</summary>
-    public static AppArgs Args { get; private set; } = null!;
-    public static FileLoggerProvider Logs { get; private set; } = null!;
+    public static AppArgs Args { get; internal set; } = null!;
+    public static FileLoggerProvider Logs { get; internal set; } = null!;
 
     // Initialization code. Don't use any Avalonia, third-party APIs or any SynchronizationContext-
     // reliant code before AppMain is called: things aren't initialized yet and stuff will break.

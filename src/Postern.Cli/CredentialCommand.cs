@@ -54,7 +54,7 @@ internal static class CredentialCommand
             secret = ReadHidden();
             Console.WriteLine();
         }
-        secret = secret.Trim('﻿', ' ', '\r', '\n', '\t'); // a PowerShell pipe can prepend a BOM
+        secret = secret.Trim((char)0xFEFF, ' ', '\r', '\n', '\t'); // a PowerShell pipe can prepend a BOM
         if (ProviderDefinition.CheckSecret(secret) is { } problem)
         {
             error($"Not stored: the secret {problem}.");
