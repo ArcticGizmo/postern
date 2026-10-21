@@ -55,7 +55,7 @@ static async Task Connect(string pipe)
     try
     {
         using var http = PipeHttp.Create(pipe);
-        Console.WriteLine("CONNECTED. Broker says: " + S1.Redact(await http.GetStringAsync("_spike/whoami")));
+        Console.WriteLine("CONNECTED. Broker says: " + Report.Redact(await http.GetStringAsync("_spike/whoami")));
     }
     catch (Exception ex)
     {

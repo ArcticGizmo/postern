@@ -41,6 +41,12 @@ internal static class Live
             report.Info("rate limit after 200", RateLine(response));
         });
 
+        if (etag is null && usedAfterFirst is null)
+        {
+            report.Info("stopping", "GET /user didn't succeed, so the rest would only repeat the failure");
+            return;
+        }
+
         await report.Run("conditional 304", async () =>
         {
             if (etag is null)

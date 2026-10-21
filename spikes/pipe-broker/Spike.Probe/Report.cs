@@ -57,6 +57,15 @@ internal sealed class Report
         Console.ForegroundColor = colour;
         Console.Write($"  [{tag}] ");
         Console.ResetColor();
-        Console.WriteLine(detail.Length == 0 ? check : $"{check}: {detail}");
+        Console.WriteLine(Redact(detail.Length == 0 ? check : $"{check}: {detail}"));
     }
+
+    static readonly string ProfilePath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+    static readonly string UserSid = System.Security.Principal.WindowsIdentity.GetCurrent().User!.Value;
+
+    /// <summary>Keep your SID and profile path (which carries your name) out of output that might get pasted somewhere.</summary>
+    public static string Redact(string text) => text
+        .Replace(UserSid, "<your-SID>", StringComparison.Ordinal)
+        .Replace(ProfilePath, "%USERPROFILE%", StringComparison.OrdinalIgnoreCase)
+        .Replace(ProfilePath.Replace(@"\", @"\\"), "%USERPROFILE%", StringComparison.OrdinalIgnoreCase);
 }

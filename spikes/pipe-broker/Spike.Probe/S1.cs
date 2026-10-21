@@ -26,7 +26,7 @@ internal static class S1
             report.Check(server.ProcessId == broker.Pid, "server identity", $"client sees server pid {server.ProcessId}, {server.ExePath}, running as you");
         });
 
-        await report.Run("pipe ACL", async () => report.Info("pipe ACL (SDDL)", Redact(await http.GetStringAsync("_spike/acl"))));
+        await report.Run("pipe ACL", async () => report.Info("pipe ACL (SDDL)", await http.GetStringAsync("_spike/acl")));
 
         await report.Run("caller identity", async () =>
         {
@@ -228,10 +228,6 @@ internal static class S1
         double At(double p) => samples[Math.Min(samples.Count - 1, (int)(samples.Count * p))];
         return $"n={samples.Count} p50 {At(0.50):F3} ms, p99 {At(0.99):F3} ms, max {samples[^1]:F3} ms";
     }
-
-    /// <summary>Your SID is an account identifier; keep it out of output that might get pasted somewhere.</summary>
-    internal static string Redact(string text) =>
-        text.Replace(System.Security.Principal.WindowsIdentity.GetCurrent().User!.Value, "<your-SID>", StringComparison.Ordinal);
 
     internal static string LastLine(string output) =>
         output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).LastOrDefault() ?? "<no output>";

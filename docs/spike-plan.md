@@ -4,6 +4,17 @@ How to take `scope.md` from paper to something Perch depends on, testing the ris
 are throwaway code under `spikes/<name>/`, and each gets a README that records **what it proved**, in the same
 style as Perch's `spikes/reserve-edge`. Nothing in a spike goes into `src/` without being rewritten.
 
+## Status
+
+| Spike | State |
+|---|---|
+| S1 pipe transport and identity | ✅ Proved locally (`spikes/pipe-broker`). Waiting on two manual checks: another user, elevated terminal |
+| S2 forwarding | ✅ Proved against a fake upstream. Live GitHub and corporate TLS are waiting on a PAT run |
+| S3–S5 | Not started |
+
+S1 changed the design in one place: blocking remote clients needs `PIPE_REJECT_REMOTE_CLIENTS`, so Postern
+creates the pipe handle itself instead of relying on .NET or Kestrel defaults. See the spike README.
+
 ## Recommended stack
 
 | Decision | Recommendation | Why |
