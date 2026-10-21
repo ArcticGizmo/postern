@@ -29,6 +29,18 @@ public sealed record ProviderDefinition(string Name, Uri BaseUrl, AuthStyle Auth
             throw new ArgumentException($"Provider '{Name}' uses header auth but names no header.");
     }
 
+    /// <summary>
+    /// Secrets go into an HTTP header, so they must be printable ASCII. Catches the classic paste accidents: a BOM from
+    /// a PowerShell pipe, a trailing newline, smart quotes. Returns null when fine, else what's wrong.
+    /// </summary>
+    public static string? CheckSecret(string secret)
+    {
+        if (secret.Length == 0)
+            return "empty";
+        var bad = secret.FirstOrDefault(c => c is < (char)0x20 or > (char)0x7E);
+        return bad == default ? null : $"contains a non-printable or non-ASCII character (U+{(int)bad:X4}) at position {secret.IndexOf(bad) + 1}";
+    }
+
     /// <summary>The header name and value to inject.</summary>
     public (string Name, string Value) AuthorizationFor(string secret) => Auth switch
     {

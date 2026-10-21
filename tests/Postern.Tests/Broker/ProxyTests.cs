@@ -111,6 +111,17 @@ public class ProxyTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task NonAsciiCredentialIsRefusedNotSent()
+    {
+        using var client = await _h.RegisteredClient("GET fake/echo");
+        _h.Credentials.Write("postern:fake:default", "﻿secret-with-bom");
+        using var http = client.CreateHttpClient("fake");
+        using var response = await http.GetAsync("echo");
+        Assert.Equal("credential-invalid", await Code(response));
+        Assert.Empty(_h.Upstream.Requests);
+    }
+
+    [Fact]
     public async Task UnreachableUpstreamIsAPosternError()
     {
         using var client = await _h.RegisteredClient("GET dead/x");

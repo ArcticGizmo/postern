@@ -79,6 +79,11 @@ internal sealed class ProxyEndpoint(
             await Deny(context, audited, decision.App, 503, "credential-missing", $"No credential for '{provider}'. Add one in Postern (tray → Credentials).");
             return;
         }
+        if (ProviderDefinition.CheckSecret(secret) is { } problem)
+        {
+            await Deny(context, audited, decision.App, 503, "credential-invalid", $"The stored credential for '{provider}' {problem}. Set it again.");
+            return;
+        }
 
         var transformer = new InjectingTransformer(definition, secret, rest, rateLimits);
         var error = await forwarder.SendAsync(context, definition.BaseUrl.GetLeftPart(UriPartial.Path).TrimEnd('/'), _upstream, _requestConfig, transformer);
