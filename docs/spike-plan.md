@@ -6,14 +6,29 @@ style as Perch's `spikes/reserve-edge`. Nothing in a spike goes into `src/` with
 
 ## Status
 
-| Spike | State |
+| Step | State |
 |---|---|
-| S1 pipe transport and identity | ✅ Proved locally (`spikes/pipe-broker`). Waiting on two manual checks: another user, elevated terminal |
-| S2 forwarding | ✅ Proved against a fake upstream. Live GitHub and corporate TLS are waiting on a PAT run |
-| S3–S5 | Not started |
+| S1 pipe transport and identity | ✅ Proved locally (`spikes/pipe-broker`). Other-user and elevated checks queued in `test-batch.md` §8 |
+| S2 forwarding | ✅ Proved against a fake upstream. Live GitHub and corporate TLS queued (§2, §7) |
+| S3 approval UX | ✅ Built in the tray app (arm delay, deny by default, scope diff). Foreground-lock behaviour queued (§4) |
+| S4 lifecycle | ✅ Run key + `--supervise` watchdog; crash→restart→client-retry proven by `scripts/smoke.ps1`. Sign-out/in queued (§6) |
+| S5 Graph via WAM | Not started. Blocked on whether an Entra app registration is obtainable |
+| Phase 1 walking skeleton | ✅ `src/`: Core, Broker, Client, App, Cli; 96 tests; smoke script |
+| C1 Perch | Seam + shadow mode built on `..\perch-postern` (`spike/postern-transport`); E2E against a fake passes. Shadow week queued (§9) |
+| C2 Octokit, Node | ✅ Against the fake (`spikes/consumers`). Live queued (§7) |
+| C3 Pylon-shaped poller | ✅ Survives a Postern crash with 0 failures. Live 304 accounting queued (§7) |
 
-S1 changed the design in one place: blocking remote clients needs `PIPE_REJECT_REMOTE_CLIENTS`, so Postern
-creates the pipe handle itself instead of relying on .NET or Kestrel defaults. See the spike README.
+What the spikes changed in the design:
+
+- Blocking remote clients needs `PIPE_REJECT_REMOTE_CLIENTS`, so Postern creates the pipe handle itself instead
+  of relying on .NET or Kestrel defaults (S1).
+- `Postern.Client` refuses any request not addressed to `http://postern/`. SDKs that follow redirects themselves
+  (Octokit's archive download) otherwise dial the pipe for another host, and for https that means a TLS
+  handshake against plain HTTP (C2).
+- Synchronous `HttpClient.Send` has to be routed through the same checks as `SendAsync` (found wiring Perch).
+- Secrets are checked as printable ASCII on save and before use: a PowerShell pipe prepends a BOM (smoke).
+- Restart on crash is a `--supervise` watchdog launched from the Run key, not a scheduled task. Scheduled-task
+  creation is an EDR persistence signal, and Task Scheduler's restart interval is at least 1 minute.
 
 ## Recommended stack
 

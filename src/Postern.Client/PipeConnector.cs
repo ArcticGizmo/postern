@@ -45,6 +45,13 @@ internal static class PipeConnector
                 Verify(stream, options);
                 return stream;
             }
+            catch (UnauthorizedAccessException)
+            {
+                // The pipe's ACL refused us: it belongs to another user (or this is a remote/network logon). Not a
+                // restart in progress, so don't let the handler retry it.
+                await stream.DisposeAsync();
+                throw new PosternVerificationException($"The '{options.PipeName}' pipe refused this account: it belongs to another user's Postern.");
+            }
             catch
             {
                 await stream.DisposeAsync();

@@ -51,8 +51,8 @@ internal static class Program
         if (Args.Headless)
             return RunHeadless(log).GetAwaiter().GetResult();
 
-        BuildAvaloniaApp().StartWithClassicDesktopLifetime([]);
-        return Environment.ExitCode;
+        // The shutdown code is what the supervisor reads: 0 (Quit) stops it, anything else restarts Postern.
+        return BuildAvaloniaApp().StartWithClassicDesktopLifetime([]);
     }
 
     /// <summary>The broker without a tray. Nobody can approve, so new registrations are denied (except dev auto-approve).</summary>
