@@ -234,11 +234,26 @@ public class ProxyTests : IAsyncLifetime
         Assert.Empty(_h.Upstream.Requests);
     }
 
-    [Fact]
-    public async Task RequestsForAnotherHostAreRefused()
+    [Theory]
+    [InlineData("http://elsewhere.example/landing")]
+    [InlineData("https://codeload.example/o/r/tar.gz/main")]
+    [InlineData("https://postern/fake/echo")]
+    public async Task ClientRefusesRequestsNotForPostern(string url)
     {
-        using var client = await _h.RegisteredClient("GET fake/redirect");
+        using var client = await _h.RegisteredClient("GET fake/echo");
         using var http = new HttpClient(client.CreateHandler());
+        var ex = await Assert.ThrowsAsync<HttpRequestException>(() => http.GetAsync(url));
+        Assert.Contains("only carries requests to http://postern/", ex.Message);
+        Assert.Empty(_h.Upstream.Requests);
+    }
+
+    [Fact]
+    public async Task BrokerRefusesRequestsForAnotherHost()
+    {
+        // A client without PosternHandler's check (Node, a hand-rolled one): the broker's Host check is the backstop.
+        using var client = await _h.RegisteredClient("GET fake/echo");
+        var options = new PosternOptions { AppName = "raw", PipeName = _h.Pipe, ExpectedServerExe = Environment.ProcessPath };
+        using var http = new HttpClient(Postern.Client.PipeConnector.CreateHandler(options));
         using var response = await http.GetAsync("http://elsewhere.example/landing");
         Assert.Equal(HttpStatusCode.MisdirectedRequest, response.StatusCode);
         Assert.Equal("misdirected-host", await Code(response));

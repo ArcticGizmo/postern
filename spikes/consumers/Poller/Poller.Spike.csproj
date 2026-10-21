@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- C3: a Pylon-shaped consumer. Polls with ETags through Postern, rides out restarts, reacts to revocation. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>poller-spike</AssemblyName>
+    <RootNamespace>PollerSpike</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Postern.Client\Postern.Client.csproj" />
+  </ItemGroup>
+
+</Project>

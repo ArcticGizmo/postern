@@ -12,6 +12,15 @@ public sealed class PosternHandler(PosternClient client, HttpMessageHandler inne
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
+        // The pipe connection ignores the URI's host, so anything else (typically a redirect an SDK follows itself,
+        // like Octokit's archive downloads to https://codeload.github.com) would be dialled into Postern. For https
+        // that's a TLS handshake against plain HTTP, which fails with a baffling SSL error. Refuse it here, clearly,
+        // and before the app token is attached.
+        if (request.RequestUri is not { Scheme: "http", Host: "postern" } uri)
+            throw new HttpRequestException(
+                $"Postern only carries requests to http://postern/...; this one is for {request.RequestUri?.GetLeftPart(UriPartial.Authority) ?? "(no URI)"}. " +
+                "If it's a redirect to a pre-signed download URL, fetch that URL directly, without Postern.");
+
         if (!request.Headers.Contains(PosternClient.TokenHeader) && client.Token is { } token)
             request.Headers.TryAddWithoutValidation(PosternClient.TokenHeader, token);
 

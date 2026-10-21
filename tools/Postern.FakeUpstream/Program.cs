@@ -43,6 +43,9 @@ app.MapPost("/graphql", () => Results.Json(new { data = new { viewer = new { log
 
 app.MapGet("/redirect", () => Results.Redirect("https://elsewhere.example/landing"));
 
+// Like GitHub: archives redirect to a pre-signed URL on another host.
+app.MapGet("/repos/{owner}/{repo}/tarball", (string owner, string repo) => Results.Redirect($"https://codeload.example/{owner}/{repo}/tar.gz/main?token=presigned"));
+
 app.MapGet("/repos/{owner}/{repo}/pulls", (HttpContext c, string owner, string repo) =>
 {
     var generation = DateTimeOffset.UtcNow.ToUnixTimeSeconds() / 20;

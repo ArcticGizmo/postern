@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Octokit/Octokit.Spike.csproj" />
+  <Project Path="Poller/Poller.Spike.csproj" />
+</Solution>

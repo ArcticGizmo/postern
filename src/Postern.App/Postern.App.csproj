@@ -7,7 +7,6 @@
     <AssemblyName>Postern</AssemblyName>
     <Product>Postern</Product>
     <Description>Local credential broker: apps call providers through Postern, which holds the secrets.</Description>
-    <Version>0.1.0</Version>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>

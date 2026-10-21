@@ -41,12 +41,12 @@ List<string> TakeAll(string name)
 bool Flag(string name) => rest.Remove(name);
 
 var appName = Take("--name") ?? "cli";
-var pipe = Take("--pipe");
+var pipe = Take("--pipe") ?? new PosternOptions { AppName = appName }.PipeName;
 using var postern = new PosternClient(new PosternOptions
 {
     AppName = appName,
-    PipeName = pipe ?? new PosternOptions { AppName = appName }.PipeName,
-    TokenStore = DpapiFileTokenStore.ForApp("postern-cli." + appName),
+    PipeName = pipe,
+    TokenStore = DpapiFileTokenStore.ForApp(PosternClient.TokenKey("postern-cli." + appName, pipe)),
 });
 
 try

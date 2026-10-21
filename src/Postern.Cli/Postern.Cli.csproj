@@ -6,7 +6,6 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>Postern.Cli</RootNamespace>
     <AssemblyName>postern-cli</AssemblyName>
-    <Version>0.1.0</Version>
   </PropertyGroup>
 
   <ItemGroup>

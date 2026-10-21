@@ -36,12 +36,16 @@ public sealed class PosternClient : IDisposable
     public PosternClient(PosternOptions options)
     {
         Options = options;
-        _tokens = options.TokenStore ?? (OperatingSystem.IsWindows() ? DpapiFileTokenStore.ForApp(options.AppName) : new InMemoryTokenStore());
+        _tokens = options.TokenStore ?? (OperatingSystem.IsWindows() ? DpapiFileTokenStore.ForApp(TokenKey(options.AppName, options.PipeName)) : new InMemoryTokenStore());
         _token = _tokens.Load();
         _control = new Lazy<HttpClient>(() => new HttpClient(CreateHandler(), disposeHandler: true) { BaseAddress = new Uri("http://postern/_postern/") });
     }
 
     public PosternOptions Options { get; }
+
+    /// <summary>Token file key: the app name, plus the pipe when it isn't the default (a test broker's token is useless elsewhere).</summary>
+    public static string TokenKey(string appName, string pipeName) =>
+        pipeName == PosternOptions.DefaultPipeName ? appName : $"{appName}.{pipeName}";
 
     public bool HasToken => _token is not null;
 
