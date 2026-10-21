@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Postern.Core/Postern.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Postern.Tests/Postern.Tests.csproj" />
+  </Folder>
+</Solution>
