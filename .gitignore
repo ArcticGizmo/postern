@@ -1,6 +1,7 @@
 # .NET build output
 bin/
 obj/
+out/
 [Dd]ebug/
 [Rr]elease/
 *.user
