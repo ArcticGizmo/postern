@@ -13,11 +13,15 @@ internal static class TrayArt
 {
     static WindowIcon? _normal;
     static WindowIcon? _attention;
+    static Bitmap? _logo;
 
     public static WindowIcon WindowIcon(bool attention = false) =>
-        attention ? _attention ??= Render(Color.Parse("#F5A524")) : _normal ??= Render(Color.Parse("#4FB8A8"));
+        attention ? _attention ??= new WindowIcon(Draw(Color.Parse("#F5A524"))) : _normal ??= new WindowIcon(Draw(Color.Parse("#4FB8A8")));
 
-    static WindowIcon Render(Color gate)
+    /// <summary>The normal icon as an image, for the main window's nav header.</summary>
+    public static Bitmap Logo() => _logo ??= Draw(Color.Parse("#4FB8A8"));
+
+    static Bitmap Draw(Color gate)
     {
         var bitmap = new RenderTargetBitmap(new PixelSize(64, 64), new Vector(96, 96));
         var dark = new SolidColorBrush(Color.Parse("#15181B"));
@@ -28,6 +32,6 @@ internal static class TrayArt
             context.DrawEllipse(dark, null, new Point(32, 35), 5, 5);
             context.DrawRectangle(dark, null, new Rect(30, 37, 4, 11));
         }
-        return new WindowIcon(bitmap);
+        return bitmap;
     }
 }

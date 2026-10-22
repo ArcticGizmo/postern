@@ -8,43 +8,34 @@ using Postern.Core.RateLimiting;
 namespace Postern.App.Views;
 
 /// <summary>The last few hundred requests (allowed and denied) and the latest rate-limit state per provider bucket.</summary>
-internal sealed class AuditWindow : Window
+internal sealed class AuditPage : UserControl
 {
     readonly BrokerRuntime _broker;
     readonly StackPanel _limits = new() { Spacing = 2 };
     readonly StackPanel _rows = new() { Spacing = 1 };
 
-    public AuditWindow(BrokerRuntime broker)
+    public AuditPage(BrokerRuntime broker)
     {
         _broker = broker;
-        Title = "Postern: audit log";
-        Width = 1080;
-        Height = 640;
-        Background = Ui.Background;
-        WindowStartupLocation = WindowStartupLocation.CenterScreen;
-        Icon = TrayArt.WindowIcon();
-
         var refresh = Ui.Button("Refresh", Refresh);
         var header = new DockPanel { Margin = new Thickness(0, 0, 0, 10) };
         DockPanel.SetDock(refresh, Dock.Right);
         header.Children.Add(refresh);
         header.Children.Add(Ui.Heading("Audit log"));
 
-        var top = new StackPanel { Spacing = 8, Children = { header, Ui.Field("Rate limits (latest seen)", _limits) } };
-        DockPanel.SetDock(top, Dock.Top);
         Content = new DockPanel
         {
             Margin = new Thickness(18),
             Children =
             {
-                top,
+                Ui.Top(new StackPanel { Spacing = 8, Children = { header, Ui.Field("Rate limits (latest seen)", _limits) } }),
                 new ScrollViewer { Margin = new Thickness(0, 12, 0, 0), Content = _rows, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto },
             },
         };
         Refresh();
     }
 
-    void Refresh()
+    public void Refresh()
     {
         _limits.Children.Clear();
         var limits = _broker.RateLimits.All();

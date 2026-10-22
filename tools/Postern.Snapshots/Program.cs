@@ -36,15 +36,15 @@ await session.Dispatch(() =>
         Request(previous: null, signed: false, name: "worker", exe: @"C:\Code\example-stack\worker\bin\Debug\worker.exe")), "approval-queue");
 
     var updater = new Postern.App.Services.Updater();
-    Save(Updates(updater, w => w.ShowAvailable("0.3.0", null)), "update-available");
-    Save(Updates(updater, w => w.ShowUpToDate()), "update-up-to-date");
-    Save(Updates(updater, w => w.ShowNotInstalled()), "update-not-installed");
-    Save(Updates(updater, w => w.ShowDownloading("0.3.0", 42)), "update-downloading");
-
     var broker = Broker();
-    Save(new AppsWindow(broker), "apps");
-    Save(new CredentialsWindow(broker), "credentials");
-    Save(new AuditWindow(broker), "audit");
+    Save(Shell(broker, updater, MainWindow.AppsKey), "apps");
+    Save(Shell(broker, updater, MainWindow.CredentialsKey), "credentials");
+    Save(Shell(broker, updater, MainWindow.AuditKey), "audit");
+    Save(Shell(broker, updater, MainWindow.GeneralKey), "general");
+    Save(Shell(broker, updater, MainWindow.UpdatesKey, p => p.ShowAvailable("0.3.0", null)), "update-available");
+    Save(Shell(broker, updater, MainWindow.UpdatesKey, p => p.ShowUpToDate()), "update-up-to-date");
+    Save(Shell(broker, updater, MainWindow.UpdatesKey, p => p.ShowNotInstalled()), "update-not-installed");
+    Save(Shell(broker, updater, MainWindow.UpdatesKey, p => p.ShowDownloading("0.3.0", 42)), "update-downloading");
 }, CancellationToken.None);
 
 Console.WriteLine($"Wrote snapshots to {output}");
@@ -62,10 +62,10 @@ void Save(Window window, string name)
     window.Close();
 }
 
-static UpdateWindow Updates(Postern.App.Services.Updater updater, Action<UpdateWindow> state)
+static MainWindow Shell(BrokerRuntime broker, Postern.App.Services.Updater updater, string page, Action<UpdatesPage>? updates = null)
 {
-    var window = new UpdateWindow(updater, () => { }, checkOnOpen: false);
-    state(window);
+    var window = new MainWindow(broker, updater, () => { }, page);
+    updates?.Invoke(window.Updates);
     return window;
 }
 

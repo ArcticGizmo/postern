@@ -6,7 +6,7 @@ using Postern.Core.Scopes;
 namespace Postern.Cli;
 
 /// <summary>
-/// <c>postern-cli credential set|delete|list [provider] [--data-dir DIR]</c>: the tray's Credentials window for scripts.
+/// <c>postern-cli credential set|delete|list [provider] [--data-dir DIR]</c>: the app's Credentials page for scripts.
 /// The secret comes from stdin (piped) or a hidden prompt, never from the command line (which lands in history and
 /// process listings). It writes Credential Manager directly, as the tray does; it doesn't go through the pipe, and
 /// it's no more privileged than any process running as you (which is the trust model's line anyway).

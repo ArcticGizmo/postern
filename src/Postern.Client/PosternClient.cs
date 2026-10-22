@@ -32,7 +32,7 @@ public sealed class PosternClient : IDisposable
     /// app's environment, elevation and lifetime (and die with the app's process tree), so it's started by the user
     /// or at login.
     /// </summary>
-    public const string NotRunningHint = "Start Postern.exe, and turn on Start at login in its tray menu so it's up before your apps.";
+    public const string NotRunningHint = "Start Postern.exe, and turn on Start at login on its General page so it's up before your apps.";
 
     static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 

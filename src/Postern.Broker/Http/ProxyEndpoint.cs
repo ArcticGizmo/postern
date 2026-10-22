@@ -76,7 +76,7 @@ internal sealed class ProxyEndpoint(
         }
         if (string.IsNullOrEmpty(secret))
         {
-            await Deny(context, audited, decision.App, 503, "credential-missing", $"No credential for '{provider}'. Add one in Postern (tray → Credentials).");
+            await Deny(context, audited, decision.App, 503, "credential-missing", $"No credential for '{provider}'. Add one in Postern (click the tray icon → Credentials).");
             return;
         }
         if (ProviderDefinition.CheckSecret(secret) is { } problem)

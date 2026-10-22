@@ -5,7 +5,7 @@
 .DESCRIPTION
     Downloads the Velopack installer (Postern-win-Setup.exe) for a GitHub release, verifies it against the
     SHA256SUMS.txt published alongside it, and runs it. Everything after this - every later update - is
-    Velopack's job: Tray -> Check for updates.
+    Velopack's job: Postern -> Updates.
 
     Designed to be run as a one-liner from a normal (not elevated) PowerShell:
 
@@ -141,9 +141,10 @@ The download has been deleted. Retry; if it keeps failing, report it at $(Get-Re
 
     Write-Host ''
     Write-Host "Postern $tag is installed and running in the system tray." -ForegroundColor Green
-    Write-Host '  Add your GitHub token: right-click the tray icon -> Credentials.' -ForegroundColor DarkGray
-    Write-Host '  Keep it running: tray -> Start at login.' -ForegroundColor DarkGray
-    Write-Host '  Updates from here on are in-app: tray -> Check for updates.' -ForegroundColor DarkGray
+    Write-Host '  Click the tray icon to open Postern, then:' -ForegroundColor DarkGray
+    Write-Host '  Add your GitHub token: Credentials.' -ForegroundColor DarkGray
+    Write-Host '  Keep it running: General -> Start Postern when I sign in.' -ForegroundColor DarkGray
+    Write-Host '  Updates from here on are in-app: Updates.' -ForegroundColor DarkGray
     Write-Host "  The CLI is at $env:LOCALAPPDATA\Postern\current\postern-cli.exe" -ForegroundColor DarkGray
 }
 

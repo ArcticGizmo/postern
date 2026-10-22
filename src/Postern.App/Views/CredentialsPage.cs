@@ -10,21 +10,14 @@ namespace Postern.App.Views;
 /// One row per provider: whether a credential is stored, and Set / Replace / Remove. Write-only: Postern never shows
 /// a stored secret back, so there's nothing on screen to shoulder-surf or screenshot.
 /// </summary>
-internal sealed class CredentialsWindow : Window
+internal sealed class CredentialsPage : UserControl
 {
     readonly BrokerRuntime _broker;
     readonly StackPanel _list = new() { Spacing = 10 };
 
-    public CredentialsWindow(BrokerRuntime broker)
+    public CredentialsPage(BrokerRuntime broker)
     {
         _broker = broker;
-        Title = "Postern: credentials";
-        Width = 640;
-        Height = 520;
-        Background = Ui.Background;
-        WindowStartupLocation = WindowStartupLocation.CenterScreen;
-        Icon = TrayArt.WindowIcon();
-
         var dataDir = Program.Args.DataDirectory;
         Content = new ScrollViewer
         {
@@ -44,11 +37,18 @@ internal sealed class CredentialsWindow : Window
         Refresh();
     }
 
-    void Refresh()
+    /// <summary>Providers with no stored credential, for the nav badge: requests to them fail until one is added.</summary>
+    public int Missing { get; private set; }
+
+    public event Action? Changed;
+
+    public void Refresh()
     {
         _list.Children.Clear();
+        Missing = 0;
         foreach (var provider in _broker.Providers)
             _list.Children.Add(Row(provider));
+        Changed?.Invoke();
     }
 
     Control Row(ProviderDefinition provider)
@@ -65,6 +65,8 @@ internal sealed class CredentialsWindow : Window
             stored = false;
             state = "can't read Credential Manager: " + ex.Message;
         }
+        if (!stored)
+            Missing++;
 
         var entry = new TextBox
         {

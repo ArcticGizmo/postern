@@ -48,7 +48,7 @@ public sealed class Registrations
         _approvalTimeout = approvalTimeout ?? DefaultApprovalTimeout;
     }
 
-    /// <summary>Raised after any status change (for the tray's app list and badge).</summary>
+    /// <summary>Raised after any status change (for the Apps page and the tray badge).</summary>
     public event Action? Changed;
 
     public IReadOnlyList<AppRegistration> All() => _store.All();

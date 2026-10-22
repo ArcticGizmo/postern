@@ -215,7 +215,7 @@ internal sealed class ApprovalWindow : Window
         }));
         body.Children.Add(Ui.Field("It asks for", ScopeList(request)));
         body.Children.Add(Ui.Text("Postern adds your stored credential to each allowed request. The app never sees the secret. " +
-                                  "You can revoke this at any time from the tray (Apps…).", Ui.Muted, 12));
+                                  "You can revoke this at any time under Apps (click the tray icon).", Ui.Muted, 12));
         return body;
     }
 

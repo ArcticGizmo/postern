@@ -15,7 +15,7 @@ Branches: **postern** `poc/walking-skeleton`; **perch** `spike/postern-transport
 - **Session D** (~20 min, then a day or two in the background): the approval queue, the elevation guard, and a
   stack of small shadow apps comparing gh with Postern.
 - **Session E** (~30 min): install from a locally built release next to Postern (Dev), then update through
-  Tray → Check for updates, using a local feed because nothing is on GitHub yet. See `docs/releasing.md`.
+  the Updates page, using a local feed because nothing is on GitHub yet. See `docs/releasing.md`.
 
 ---
 
@@ -70,14 +70,15 @@ Branches: **postern** `poc/walking-skeleton`; **perch** `spike/postern-transport
 
 - [ ] **A2.1** `& $postern`
   **Expect:** within about 2 s, a teal arched-gate icon in the tray (it may be in the ^ overflow), and the
-  **Credentials** window opens by itself.
+  Postern window opens by itself on **Credentials**, with an amber *missing* badge beside it in the left nav.
   Result:
 
 - [ ] **A2.2** In Credentials, the github row says *missing* in amber. Click **Set**, paste the PAT, click **Save**.
-  **Expect:** *stored* in green, with **Replace** and **Remove** buttons. Nothing shows the token.
+  **Expect:** *stored* in green, with **Replace** and **Remove** buttons, and the *missing* badge gone. Nothing shows
+  the token.
   Result:
 
-- [ ] **A2.3** Close the window, then reopen it from the tray (Credentials…).
+- [ ] **A2.3** Close the window, then click the tray icon and pick **Credentials** in the nav.
   **Expect:** still *stored*.
   Result:
 
@@ -86,11 +87,12 @@ Branches: **postern** `poc/walking-skeleton`; **perch** `spike/postern-transport
   Result:
 
 - [ ] **A2.5** Right-click the tray icon.
-  **Expect:** `Postern 0.1.0`, Apps…, Credentials…, Audit log…, Start at login, Open data folder, Quit Postern.
+  **Expect:** `Postern 0.1.0`, Open Postern…, Quit Postern. No update item unless one has been found.
   Result:
 
 - [ ] **A2.6** Left-click the tray icon.
-  **Expect:** the Apps window opens, saying no apps have access.
+  **Expect:** the Postern window opens on **Apps**, saying no apps have access. **General** shows Start at login,
+  the data and logs folders (each with Open), the version and the pipe. Esc closes the window.
   Result:
 
 - [ ] **A2.7** `& $cli status`
@@ -244,7 +246,7 @@ Branches: **postern** `poc/walking-skeleton`; **perch** `spike/postern-transport
 
 ### A7. Audit log and secret hygiene
 
-- [ ] **A7.1** Open Tray → Audit log.
+- [ ] **A7.1** Open Postern → Audit log.
   **Expect at the top:** `github/core: N/5000 left…`, and probably a `github/graphql` line.
   Result:
 
@@ -301,13 +303,13 @@ Do these before Session C. Perch's traffic would otherwise muddy the rate-limit 
   Remove-Item "$env:LOCALAPPDATA\Postern.Client\node-spike.postern.plain-token"
   ```
 
-- [ ] **A8.6** In the Apps window, revoke `poller-spike`, `octokit-spike` and `node-spike`.
+- [ ] **A8.6** On the Apps page, revoke `poller-spike`, `octokit-spike` and `node-spike`.
 
 ---
 
 ## Session B: lifecycle and accounts
 
-- [ ] **B1** Tray → **Start at login** (it gets a tick). Then run:
+- [ ] **B1** Postern → General → tick **Start Postern when I sign in to Windows**. Then run:
   ```powershell
   (Get-ItemProperty HKCU:\Software\Microsoft\Windows\CurrentVersion\Run).Postern
   ```
@@ -375,7 +377,7 @@ Shadow mode compares answers, so Postern's PAT needs the same reach as your gh l
   **Report:** which route the org allowed. That's a finding for the scope doc.
   Result:
 
-- [ ] **C0.2** Store it: Tray → Credentials → Replace.
+- [ ] **C0.2** Store it: Postern → Credentials → Replace.
 
 ### C1. Run Perch in shadow mode
 
@@ -428,7 +430,7 @@ Shadow mode compares answers, so Postern's PAT needs the same reach as your gh l
   **Expect:** the alerts strip and PR glyphs work as before. Perch now holds no GitHub token.
   Result:
 
-- [ ] **C4.2** Revoke `perch` in Postern's Apps window.
+- [ ] **C4.2** Revoke `perch` on Postern's Apps page.
   **Expect:** the strip shows "Postern refused: app-revoked", and Perch doesn't crash.
   Result:
 
@@ -464,7 +466,7 @@ Shadow mode compares answers, so Postern's PAT needs the same reach as your gh l
   ```
   **Expect:** the build succeeds, 102 tests pass, and the tray icon is back as **Postern (Dev)**. Debug builds are
   now a separate profile (pipe `postern-dev`, data in `%LOCALAPPDATA%\Postern.Dev`, credentials under
-  `postern-dev:`), so it starts fresh: the Credentials window opens. Paste your PAT there. Earlier approvals stay
+  `postern-dev:`), so it starts fresh: Postern opens on Credentials. Paste your PAT there. Earlier approvals stay
   with the old data and aren't carried over. The Debug `$cli` and the shadow apps talk to the dev profile on their own.
   Result:
 
@@ -576,7 +578,7 @@ a new terminal, in the repo folder.
 ### E0. Clear the way for a fresh install
 
 - [ ] **E0.1** If a Postern from before Session D is still running (its tray says **Postern**, not
-  **Postern (Dev)**), untick its Start at login, then Tray → Quit.
+  **Postern (Dev)**), untick Start at login on its General page, then Tray → Quit.
   Result:
 
 - [ ] **E0.2** `%LOCALAPPDATA%\Postern` still holds the data from the builds before Session D, and it's where the
@@ -589,7 +591,7 @@ a new terminal, in the repo folder.
   will find it there. If you want the install to start without one, delete it first: `cmdkey /delete:postern:github:default`.
   Result:
 
-- [ ] **E0.3** In **Postern (Dev)**: Tray → Check for updates….
+- [ ] **E0.3** In **Postern (Dev)**: open the Updates page.
   **Expect:** "This copy can't update itself", showing the `bin\Debug` path.
   Result:
 
@@ -629,7 +631,7 @@ a new terminal, in the repo folder.
   **Expect:** `35 passed, 0 failed`, with no FAIL or SKIP lines.
   Result:
 
-- [ ] **E1.5** Tray (the installed Postern) → Check for updates….
+- [ ] **E1.5** In the installed Postern: open the Updates page.
   **Expect:** "Postern couldn't check for updates." with a not-found error, because
   `github.com/ArcticGizmo/postern` has no releases yet. That's the right failure.
   Result:
@@ -644,12 +646,12 @@ a new terminal, in the repo folder.
   ```powershell
   $env:POSTERN_UPDATE_FEED = "$PWD\releases"; & "$env:LOCALAPPDATA\Postern\current\Postern.exe"
   ```
-  **Expect:** about 30 seconds after start, the tray item changes to **Update to 0.1.1…**, and the tooltip says
-  "Update 0.1.1 available".
+  **Expect:** about 30 seconds after start, an **Update to 0.1.1…** item appears in the tray menu, the Updates nav
+  item gets a *new* badge, and the tooltip says "Update 0.1.1 available".
   Result:
 
-- [ ] **E2.2** Click **Update to 0.1.1…**.
-  **Expect:** "Postern 0.1.1 is available", the three restart bullets, and an amber line naming the local folder.
+- [ ] **E2.2** Click **Update to 0.1.1…** in the tray menu.
+  **Expect:** Postern opens on Updates: "Postern 0.1.1 is available", the three restart bullets, and an amber line naming the local folder.
   There's no Release notes button for a local feed.
   Result:
 
@@ -661,7 +663,7 @@ a new terminal, in the repo folder.
 
 ### E3. Update under the supervisor
 
-- [ ] **E3.1** In the installed copy: Tray → tick **Start at login**. Then:
+- [ ] **E3.1** In the installed copy: General → tick **Start Postern when I sign in to Windows**. Then:
   ```powershell
   (Get-ItemProperty HKCU:\Software\Microsoft\Windows\CurrentVersion\Run).Postern
   ```

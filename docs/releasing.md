@@ -68,11 +68,11 @@ touched.
 
 ## Updates
 
-- **Tray → Check for updates…** checks GitHub and offers the newer version, saying what the restart will do. Nothing
-  is applied until you click **Update and restart**.
-- **A background check** runs 30 seconds after start and then every 6 hours. It only relabels the tray item
-  ("Update to 0.3.0…") and the tooltip. Anonymous GitHub API calls are limited per IP, and an office NAT shares
-  one IP.
+- **The Updates page** checks GitHub the first time it's opened (and on **Check again**), and offers the newer
+  version, saying what the restart will do. Nothing is applied until you click **Update and restart**.
+- **A background check** runs 30 seconds after start and then every 6 hours. It only adds an "Update to 0.3.0…"
+  item to the tray menu, a "new" badge on the Updates page, and a line in the tooltip. Anonymous GitHub API calls
+  are limited per IP, and an office NAT shares one IP.
 - **Applying:** Postern downloads the package, hands over to Velopack's updater, and exits with code 6. The
   supervisor treats 6 as "stop", so nothing holds the install folder. Velopack swaps `current\` and starts
   `Postern.exe --supervise` again (or plain `Postern.exe` if it wasn't supervised).

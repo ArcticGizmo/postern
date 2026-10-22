@@ -18,8 +18,8 @@ irm https://raw.githubusercontent.com/ArcticGizmo/postern/main/install.ps1 | iex
 ```
 
 It downloads `Postern-win-Setup.exe` from the latest [release](https://github.com/ArcticGizmo/postern/releases),
-checks it against the release's `SHA256SUMS.txt`, and runs it. No admin rights are needed. Then add your GitHub token
-(Tray → Credentials) and tick Start at login. Updates come through Tray → Check for updates….
+checks it against the release's `SHA256SUMS.txt`, and runs it. No admin rights are needed. Click the tray icon to open
+Postern, add your GitHub token under Credentials, and tick Start at login under General. Updates are on the Updates page.
 
 Debug builds run as a separate **Postern (Dev)** (pipe `postern-dev`, its own data and credentials), so they can run
 next to an installed copy. See [`docs/releasing.md`](docs/releasing.md).
@@ -30,7 +30,7 @@ next to an installed copy. See [`docs/releasing.md`](docs/releasing.md).
 |---|---|
 | `src/Postern.Core` | Policy: scopes, registrations, tokens, access decisions, audit and rate-limit models. No Windows/UI deps |
 | `src/Postern.Broker` | The request path: named-pipe Kestrel host, caller identity, YARP forwarding, Credential Manager, SQLite |
-| `src/Postern.App` | `Postern.exe`, the Avalonia tray app that hosts the broker (approval prompt, Apps, Credentials, Audit) |
+| `src/Postern.App` | `Postern.exe`, the Avalonia tray app that hosts the broker (approval prompt; Apps, Credentials, Audit log, General and Updates pages) |
 | `src/Postern.Client` | The library apps reference: pipe handler with server verification, registration, DPAPI token |
 | `src/Postern.Cli` | `postern-cli`: register/call/status from scripts, and `credential set` |
 | `tests/Postern.Tests` | Unit tests plus end-to-end tests through a real pipe to a fake upstream |
@@ -52,6 +52,8 @@ $cli = ".\src\Postern.Cli\bin\Debug\net10.0-windows\postern-cli.exe"
 & $cli register --name scripts --scope "GET github/user"         # approve in the window
 & $cli call --name scripts GET github/user
 ```
+
+Or just `.\run.cmd`, which builds and starts the dev tray in one go and passes its arguments on to `Postern.exe`.
 
 `Postern.exe` options: `--headless` (no tray; registrations are denied), `--supervise` (restart on crash),
 `--pipe NAME` (default `postern`, or `postern-dev` for a Debug build), `--data-dir DIR` (default
