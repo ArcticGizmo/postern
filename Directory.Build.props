@@ -1,0 +1,9 @@
+<Project>
+  <!-- Imported by every project in the repo. A warning fails the build (locally and in CI) instead of piling up. -->
+  <PropertyGroup>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Version>0.1.0</Version>
+  </PropertyGroup>
+</Project>

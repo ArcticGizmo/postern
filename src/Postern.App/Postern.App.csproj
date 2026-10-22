@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>Postern.App</RootNamespace>
+    <AssemblyName>Postern</AssemblyName>
+    <Product>Postern</Product>
+    <Description>Local credential broker: apps call providers through Postern, which holds the secrets.</Description>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Postern.Tests" />
+    <InternalsVisibleTo Include="postern-snapshots" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.0.5" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.0.5" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.5" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.0.5" />
+    <!-- Same version as Perch, and as the vpk tool pinned in .config/dotnet-tools.json. -->
+    <PackageReference Include="Velopack" Version="1.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Postern.Core\Postern.Core.csproj" />
+    <ProjectReference Include="..\Postern.Broker\Postern.Broker.csproj" />
+  </ItemGroup>
+
+</Project>

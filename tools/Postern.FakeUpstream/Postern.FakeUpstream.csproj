@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- A GitHub-shaped stand-in on loopback for smoke tests: echoes what Postern sent, does ETags, rate-limit headers. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>fake-upstream</AssemblyName>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Policy only: scopes, registrations, tokens, audit and rate-limit models. No Windows, Kestrel or Avalonia
+       references, so every rule that decides "does this request go out?" is plain, fast-to-test code. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Postern.Core</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Postern.Tests" />
+  </ItemGroup>
+
+</Project>

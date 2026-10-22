@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- postern-cli: the first Postern consumer, and the way scripts (and curl-less shells) call through Postern. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Postern.Cli</RootNamespace>
+    <AssemblyName>postern-cli</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Postern.Client\Postern.Client.csproj" />
+    <!-- Only for `credential set|delete|list` (Credential Manager + providers.json); calls go through the client. -->
+    <ProjectReference Include="..\Postern.Broker\Postern.Broker.csproj" />
+  </ItemGroup>
+
+</Project>

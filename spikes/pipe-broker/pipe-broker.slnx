@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Spike.Broker/Spike.Broker.csproj" />
+  <Project Path="Spike.Probe/Spike.Probe.csproj" />
+</Solution>
