@@ -69,7 +69,8 @@ Branches: **postern** `poc/walking-skeleton`; **perch** `spike/postern-transport
 ### A2. Tray app first run
 
 - [ ] **A2.1** `& $postern`
-  **Expect:** within about 2 s, a teal arched-gate icon in the tray (it may be in the ^ overflow), and the
+  **Expect:** within about 2 s, a violet arched-gate icon on a purple tile in the tray (the dev colours; it may be in
+  the ^ overflow), and the
   Postern window opens by itself on **Credentials**, with an amber *missing* badge beside it in the left nav.
   Result:
 
@@ -127,7 +128,7 @@ Branches: **postern** `poc/walking-skeleton`; **perch** `spike/postern-transport
   Result:
 
 - [ ] **A3.4** Click **Allow**.
-  **Expect:** the terminal prints `Approved: Approved.`, the icon goes back to teal, and the tooltip says 1 app
+  **Expect:** the terminal prints `Approved: Approved.`, the icon goes back to violet, and the tooltip says 1 app
   is allowed.
   Result:
 
@@ -603,8 +604,8 @@ a new terminal, in the repo folder.
   Get-FileHash .\releases\Postern-win-Setup.exe; Select-String .\releases\SHA256SUMS.txt -Pattern Setup
   .\releases\Postern-win-Setup.exe
   ```
-  **Expect:** the two hashes match (case aside). There's no admin prompt. A second tray icon appears, with
-  **Postern 0.1.0** in its menu header, next to Postern (Dev). The Start menu has a Postern entry, and there's **no**
+  **Expect:** the two hashes match (case aside). There's no admin prompt. A second, teal tray icon appears, with
+  **Postern 0.1.0** in its menu header, next to Postern (Dev)'s violet one. The Start menu has a Postern entry, and there's **no**
   desktop shortcut. Add your PAT under Credentials if it asks.
   Result:
 

@@ -54,6 +54,7 @@ You can also download Setup from the release page yourself and check it with `Ge
 | Credentials (Credential Manager) | `postern:<provider>:<account>` | `postern-dev:<provider>:<account>` |
 | Start at login | `HKCU\…\Run\Postern` | `HKCU\…\Run\Postern (Dev)` |
 | Tray | Postern | Postern (Dev) |
+| Icon | Teal gate on a dark tile | Violet gate on a purple tile (both turn amber while an approval waits) |
 
 **Dev builds are a separate profile**, like Perch (Dev), so one can run next to an installed Postern without either
 touching the other. A Debug postern-cli and the Debug shadow apps follow the same rule, so they talk to the dev
