@@ -124,9 +124,61 @@ public sealed class StorageTests : IDisposable
             ] }
             """);
         var providers = BrokerOptions.LoadProviders(_dir).ToDictionary(p => p.Name);
-        Assert.Equal(AuthStyle.Header, providers["octopus"].Auth);
-        Assert.Equal(("X-Octopus-ApiKey", "k"), providers["octopus"].AuthorizationFor("k"));
+        Assert.Equal([new Injected(false, "X-Octopus-ApiKey", "k")], providers["octopus"].Apply(new Dictionary<string, string> { ["secret"] = "k" }));
         Assert.Equal("github.example.com", providers["github"].BaseUrl.Host);
+    }
+
+    [Fact]
+    public void ProvidersFileTakesTemplatesAndCustomConnections()
+    {
+        Directory.CreateDirectory(_dir);
+        File.WriteAllText(Path.Combine(_dir, "providers.json"), """
+            { "providers": [
+                // comments and trailing commas are fine: people do edit this by hand
+                { "name": "github-work", "template": "github" },
+                { "name": "jira", "template": "jira", "baseUrl": "https://contoso.atlassian.net" },
+                { "name": "trello", "baseUrl": "https://api.trello.com/1",
+                  "fields": [ { "name": "key", "label": "API key" }, { "name": "token", "label": "Token" } ],
+                  "inject": [ { "query": "key", "value": "{key}" }, { "query": "token", "value": "{token}" } ] },
+            ] }
+            """);
+        var providers = BrokerOptions.LoadProviders(_dir).ToDictionary(p => p.Name);
+
+        Assert.Equal(["github", "github-work", "jira", "trello"], providers.Keys.Order());
+        Assert.Equal("https://api.github.com/", providers["github-work"].BaseUrl.ToString());
+        Assert.Equal(["email", "token"], providers["jira"].Fields.Select(f => f.Name));
+        Assert.Equal(
+            [new Injected(true, "key", "k"), new Injected(true, "token", "t")],
+            providers["trello"].Apply(new Dictionary<string, string> { ["key"] = "k", ["token"] = "t" }));
+        Assert.Null(providers["trello"].Template);
+    }
+
+    [Theory]
+    [InlineData("""{ "providers": [ { "name": "a", "template": "nope" } ] }""", "no template 'nope'")]
+    [InlineData("""{ "providers": [ { "name": "a", "template": "jira" } ] }""", "Site is required")]
+    [InlineData("""{ "providers": [ { "name": "a", "template": "github" }, { "name": "a", "template": "gitlab" } ] }""", "listed twice")]
+    [InlineData("""{ "providers": [ { "name": "a" } ] }""", "needs a template or a baseUrl")]
+    [InlineData("""{ "providers": [ { "name": "a", "baseUrl": "not a url" } ] }""", "Connection 'a'")]
+    [InlineData("""{ "providers": [ """, "Not valid JSON")]
+    public void ProvidersFileProblemsNameTheConnection(string json, string expected)
+    {
+        var error = Assert.Throws<ArgumentException>(() => ProvidersFile.Resolve(ProvidersFile.Parse(json)));
+        Assert.Contains(expected, error.Message);
+    }
+
+    [Fact]
+    public void ProvidersFileRoundTrips()
+    {
+        ProviderEntry[] entries =
+        [
+            new() { Name = "work", Template = "github" },
+            new() { Name = "custom", BaseUrl = "https://api.example.com", Fields = [new("token", "Token")], Inject = [Injection.ToHeader("X-Key", "{token}")] },
+        ];
+        var json = ProvidersFile.Serialize(entries);
+        Assert.DoesNotContain("authHeader", json); // nulls are left out, so the file stays readable
+        var back = ProvidersFile.Resolve(ProvidersFile.Parse(json)).ToDictionary(p => p.Name);
+        Assert.Equal([new Injected(false, "X-Key", "t")], back["custom"].Apply(new Dictionary<string, string> { ["token"] = "t" }));
+        Assert.Equal("github", back["work"].Template);
     }
 
     [Fact]

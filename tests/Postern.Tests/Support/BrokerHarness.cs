@@ -49,17 +49,29 @@ internal sealed class BrokerHarness : IAsyncDisposable
         Broker = CreateBroker();
     }
 
+    /// <summary>Its own, so tests that save connections never touch the real providers.json.</summary>
+    public string DataDirectory { get; } = Path.Combine(Path.GetTempPath(), "postern-tests-" + Guid.NewGuid().ToString("N"));
+
     public static async Task<BrokerHarness> StartAsync()
     {
         var upstream = await FakeUpstream.StartAsync();
         var credentials = new InMemoryCredentialStore();
-        credentials.Write("postern:fake:default", Secret);
-        credentials.Write("postern:dead:default", Secret);
         var harness = new BrokerHarness(upstream, "postern-test-" + Guid.NewGuid().ToString("N")[..8], new ScriptedPrompt(),
             credentials, new InMemoryRegistrationStore(), new InMemoryAuditLog());
+        harness.SetSecret("fake", Secret);
+        harness.SetSecret("dead", Secret);
         await harness.Broker.StartAsync();
         return harness;
     }
+
+    /// <summary>Stores a credential the way the app does, bound to the connection's current origin.</summary>
+    public void SetSecret(string connection, params (string Field, string Value)[] values)
+    {
+        var definition = Broker.Connections.Find(connection)!;
+        Credentials.Write(definition.CredentialTarget, definition.EncodeCredential(values.ToDictionary(v => v.Field, v => v.Value)));
+    }
+
+    public void SetSecret(string connection, string secret) => SetSecret(connection, (Broker.Connections.Find(connection)!.Fields[0].Name, secret));
 
     BrokerRuntime CreateBroker() => BrokerRuntime.Create(
         new BrokerOptions
@@ -67,6 +79,7 @@ internal sealed class BrokerHarness : IAsyncDisposable
             PipeName = Pipe,
             PublishDiscovery = false,
             ApprovalTimeout = TimeSpan.FromSeconds(5),
+            DataDirectory = DataDirectory,
             Providers =
             [
                 new ProviderDefinition("fake", Upstream.BaseUrl),
@@ -107,5 +120,6 @@ internal sealed class BrokerHarness : IAsyncDisposable
     {
         await Broker.DisposeAsync();
         await Upstream.DisposeAsync();
+        try { Directory.Delete(DataDirectory, recursive: true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
     }
 }

@@ -36,6 +36,8 @@ public partial class App : Application
             _log = Program.Logs.CreateLogger("Postern.App");
 
             _broker = Program.CreateBroker(Program.WithDevAutoApprove(_prompt, _log));
+            var connections = _broker.Connections;
+            _prompt.DescribeConnection = name => connections.Find(name) is { } c ? $"{c.TemplateName} · {c.BaseUrl.Authority}" : null;
             _broker.Registrations.Changed += () => Dispatcher.UIThread.Post(UpdateTray);
             _prompt.PendingChanged += count =>
             {
@@ -60,7 +62,7 @@ public partial class App : Application
             UpdateTray();
             _updater.Start();
             if (_broker.Credentials.Read(Core.Providers.ProviderDefinition.GitHub.CredentialTarget) is null)
-                Open(MainWindow.CredentialsKey); // first run: nothing works until there's a credential
+                Open(MainWindow.ConnectionsKey); // first run: nothing works until there's a credential
         }
         catch (PipeInUseException ex)
         {

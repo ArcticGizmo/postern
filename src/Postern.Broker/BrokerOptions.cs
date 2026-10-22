@@ -1,5 +1,3 @@
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using Postern.Core.Providers;
 
 namespace Postern.Broker;
@@ -15,6 +13,9 @@ public sealed class BrokerOptions
 
     public IReadOnlyList<ProviderDefinition> Providers { get; init; } = [ProviderDefinition.GitHub];
 
+    /// <summary>Set when providers.json couldn't be used, so <see cref="Providers"/> fell back to the built-ins; shown in the app.</summary>
+    public string? ProvidersLoadError { get; init; }
+
     /// <summary>Write HKCU\Software\Postern\Pipes\{pipe} so clients can verify the server exe. Off for in-process tests.</summary>
     public bool PublishDiscovery { get; init; } = true;
 
@@ -24,35 +25,7 @@ public sealed class BrokerOptions
     public static string DefaultDataDirectory =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Postern.Data");
 
-    /// <summary>
-    /// Built-in GitHub plus anything in providers.json (same name overrides). Example file:
-    /// <code>{ "providers": [ { "name": "octopus", "baseUrl": "https://octo.example.com", "auth": "header", "authHeader": "X-Octopus-ApiKey" } ] }</code>
-    /// </summary>
-    public static IReadOnlyList<ProviderDefinition> LoadProviders(string dataDirectory)
-    {
-        var providers = new Dictionary<string, ProviderDefinition>(StringComparer.Ordinal) { ["github"] = ProviderDefinition.GitHub };
-        var path = Path.Combine(dataDirectory, "providers.json");
-        if (File.Exists(path))
-        {
-            var file = JsonSerializer.Deserialize<ProvidersFile>(File.ReadAllText(path), JsonOptions)
-                ?? throw new InvalidDataException($"{path} is empty.");
-            foreach (var p in file.Providers)
-            {
-                var definition = new ProviderDefinition(p.Name, new Uri(p.BaseUrl), p.Auth, p.AuthHeader);
-                definition.Validate();
-                providers[definition.Name] = definition;
-            }
-        }
-        return [.. providers.Values.OrderBy(p => p.Name)];
-    }
-
-    static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
-    };
-
-    sealed record ProvidersFile(List<ProviderEntry> Providers);
-
-    sealed record ProviderEntry(string Name, string BaseUrl, AuthStyle Auth = AuthStyle.Bearer, string? AuthHeader = null);
+    /// <summary>Built-in GitHub plus the connections in providers.json. See <see cref="ProviderEntry"/> for the shapes.</summary>
+    public static IReadOnlyList<ProviderDefinition> LoadProviders(string dataDirectory) =>
+        ProvidersFile.Resolve(ProvidersFile.Read(dataDirectory));
 }

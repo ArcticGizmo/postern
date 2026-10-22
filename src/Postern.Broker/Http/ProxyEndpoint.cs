@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Net;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
 using Postern.Broker.Credentials;
 using Postern.Core.Apps;
@@ -17,7 +18,7 @@ namespace Postern.Broker.Http;
 /// Anything short of an explicit allow returns a Postern error and never reaches the provider.
 /// </summary>
 internal sealed class ProxyEndpoint(
-    IReadOnlyDictionary<string, ProviderDefinition> providers,
+    Connections connections,
     IRegistrationStore registrations,
     ICredentialStore credentials,
     RateLimits rateLimits,
@@ -51,7 +52,7 @@ internal sealed class ProxyEndpoint(
         var path = rest.HasValue ? rest.Value! : "/";
         var audited = new AuditDraft(caller, context.Request.Method, provider, path, context.Request.QueryString.Value?.Length ?? 0);
 
-        if (!providers.TryGetValue(provider, out var definition))
+        if (connections.Find(provider) is not { } definition)
         {
             await Deny(context, audited, null, 404, "unknown-provider", $"No provider named '{provider}'.");
             return;
@@ -64,28 +65,28 @@ internal sealed class ProxyEndpoint(
             return;
         }
 
-        string? secret;
+        string? stored;
         try
         {
-            secret = credentials.Read(definition.CredentialTarget);
+            stored = credentials.Read(definition.CredentialTarget);
         }
         catch (Exception ex)
         {
             await Deny(context, audited, decision.App, 503, "credential-store-unavailable", ex.Message);
             return;
         }
-        if (string.IsNullOrEmpty(secret))
+        if (string.IsNullOrEmpty(stored))
         {
-            await Deny(context, audited, decision.App, 503, "credential-missing", $"No credential for '{provider}'. Add one in Postern (click the tray icon → Credentials).");
+            await Deny(context, audited, decision.App, 503, "credential-missing", $"No credential for '{provider}'. Add one in Postern (click the tray icon → Connections).");
             return;
         }
-        if (ProviderDefinition.CheckSecret(secret) is { } problem)
+        if (definition.DecodeCredential(stored, out var problem) is not { } values)
         {
-            await Deny(context, audited, decision.App, 503, "credential-invalid", $"The stored credential for '{provider}' {problem}. Set it again.");
+            await Deny(context, audited, decision.App, 503, "credential-invalid", $"The stored credential for '{provider}' {problem}. Set it again in Postern.");
             return;
         }
 
-        var transformer = new InjectingTransformer(definition, secret, rest, rateLimits);
+        var transformer = new InjectingTransformer(definition.Apply(values), rest, provider, rateLimits);
         var error = await forwarder.SendAsync(context, definition.BaseUrl.GetLeftPart(UriPartial.Path).TrimEnd('/'), _upstream, _requestConfig, transformer);
         if (error != ForwarderError.None && !context.Response.HasStarted)
         {
@@ -108,7 +109,7 @@ internal sealed class ProxyEndpoint(
 
     sealed record AuditDraft(CallerInfo Caller, string Method, string Provider, string Path, int QueryLength);
 
-    sealed class InjectingTransformer(ProviderDefinition provider, string secret, PathString upstreamPath, RateLimits rateLimits) : HttpTransformer
+    sealed class InjectingTransformer(IReadOnlyList<Injected> injected, PathString upstreamPath, string provider, RateLimits rateLimits) : HttpTransformer
     {
         // Anything that would let the client influence auth, or tell the provider about the local machine.
         static readonly string[] Stripped =
@@ -130,15 +131,30 @@ internal sealed class ProxyEndpoint(
             foreach (var name in proxyRequest.Headers.Select(h => h.Key).Where(k => k.StartsWith("Postern-", StringComparison.OrdinalIgnoreCase)).ToList())
                 proxyRequest.Headers.Remove(name);
 
-            var (header, value) = provider.AuthorizationFor(secret);
-            proxyRequest.Headers.Remove(header); // a client-sent X-Octopus-ApiKey (say) must not survive either
-            proxyRequest.Headers.TryAddWithoutValidation(header, value);
+            foreach (var header in injected.Where(i => !i.IsQuery))
+            {
+                proxyRequest.Headers.Remove(header.Name); // a client-sent X-Octopus-ApiKey (say) must not survive either
+                proxyRequest.Headers.TryAddWithoutValidation(header.Name, header.Value);
+            }
             if (proxyRequest.Headers.UserAgent.Count == 0)
                 proxyRequest.Headers.TryAddWithoutValidation("User-Agent", "Postern/" + BrokerRuntime.Version); // GitHub rejects requests without one
 
-            proxyRequest.RequestUri = RequestUtilities.MakeDestinationAddress(destinationPrefix, upstreamPath, httpContext.Request.QueryString);
+            proxyRequest.RequestUri = RequestUtilities.MakeDestinationAddress(destinationPrefix, upstreamPath, Query(httpContext.Request.QueryString));
             proxyRequest.Headers.Host = null;
             _sentAt = Stopwatch.GetTimestamp();
+        }
+
+        // The client's query goes through untouched unless the connection injects into it; then a client-sent value
+        // for an injected name is dropped, so the app can't choose the key.
+        QueryString Query(QueryString client)
+        {
+            var parameters = injected.Where(i => i.IsQuery).ToList();
+            if (parameters.Count == 0)
+                return client;
+            var kept = QueryHelpers.ParseQuery(client.Value)
+                .Where(p => !parameters.Any(i => string.Equals(i.Name, p.Key, StringComparison.OrdinalIgnoreCase)))
+                .SelectMany(p => p.Value.Select(v => new KeyValuePair<string, string?>(p.Key, v)));
+            return QueryString.Create(kept.Concat(parameters.Select(i => new KeyValuePair<string, string?>(i.Name, i.Value))));
         }
 
         public override async ValueTask<bool> TransformResponseAsync(HttpContext httpContext, HttpResponseMessage? proxyResponse, CancellationToken cancellationToken)
@@ -149,7 +165,7 @@ internal sealed class ProxyEndpoint(
             headers["Postern-Upstream-Ms"] = UpstreamMs.Value.ToString("F1", CultureInfo.InvariantCulture);
 
             if (proxyResponse is not null
-                && rateLimits.Observe(provider.Name, name => proxyResponse.Headers.TryGetValues(name, out var v) ? v.FirstOrDefault() : null) is { } limit)
+                && rateLimits.Observe(provider, name => proxyResponse.Headers.TryGetValues(name, out var v) ? v.FirstOrDefault() : null) is { } limit)
             {
                 headers["Postern-RateLimit-Resource"] = limit.Resource;
                 headers["Postern-RateLimit-Remaining"] = limit.Remaining?.ToString(CultureInfo.InvariantCulture);

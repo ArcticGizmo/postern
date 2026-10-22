@@ -16,6 +16,9 @@ internal sealed class AvaloniaApprovalPrompt : IApprovalPrompt
     /// <summary>Raised on the UI thread when the number of waiting requests changes.</summary>
     public event Action<int>? PendingChanged;
 
+    /// <summary>What a connection name in a scope points at ("GitHub · api.github.com"), or null when there's no such connection.</summary>
+    public Func<string, string?>? DescribeConnection { get; set; }
+
     public async Task<bool> AskAsync(ApprovalRequest request, CancellationToken cancellationToken)
     {
         var item = new PendingApproval(request);
@@ -41,7 +44,7 @@ internal sealed class AvaloniaApprovalPrompt : IApprovalPrompt
 
     ApprovalWindow NewWindow()
     {
-        var window = new ApprovalWindow();
+        var window = new ApprovalWindow(DescribeConnection);
         window.Closed += (_, _) =>
         {
             if (ReferenceEquals(_window, window))

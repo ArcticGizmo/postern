@@ -46,17 +46,16 @@ public sealed class BrokerRuntime : IAsyncDisposable
     public IAuditLog Audit { get; }
     public RateLimits RateLimits { get; }
     public ICredentialStore Credentials { get; }
-    public IReadOnlyList<ProviderDefinition> Providers { get; }
+    public Connections Connections { get; }
+    public IReadOnlyList<ProviderDefinition> Providers => Connections.All;
     public TimeProvider Time { get; }
 
     BrokerRuntime(BrokerOptions options, IApprovalPrompt prompt, BrokerOverrides overrides)
     {
         Options = options;
         Time = overrides.Time ?? TimeProvider.System;
-        Providers = options.Providers;
-        foreach (var provider in Providers)
-            provider.Validate();
         Credentials = overrides.Credentials ?? Profile.CredentialStore();
+        Connections = new Connections(options.Providers, options.DataDirectory, Credentials, options.ProvidersLoadError);
         RateLimits = new RateLimits(Time);
 
         PosternDatabase? database = null;
@@ -85,7 +84,7 @@ public sealed class BrokerRuntime : IAsyncDisposable
         builder.Services.AddHttpForwarder();
         builder.Services.AddSingleton<CallerResolver>();
         builder.Services.AddSingleton<BrokerMiddleware>();
-        builder.Services.AddSingleton<IReadOnlyDictionary<string, ProviderDefinition>>(Providers.ToDictionary(p => p.Name, StringComparer.Ordinal));
+        builder.Services.AddSingleton(Connections);
         builder.Services.AddSingleton(RegistrationStore);
         builder.Services.AddSingleton(Credentials);
         builder.Services.AddSingleton(RateLimits);
@@ -118,8 +117,10 @@ public sealed class BrokerRuntime : IAsyncDisposable
         _started = true;
         if (Options.PublishDiscovery)
             Discovery.Publish(Options.PipeName);
-        _app.Logger.LogInformation("Postern {Version} listening on \\\\.\\pipe\\{Pipe} (pid {Pid}); providers: {Providers}",
+        _app.Logger.LogInformation("Postern {Version} listening on \\\\.\\pipe\\{Pipe} (pid {Pid}); connections: {Providers}",
             Version, Options.PipeName, Environment.ProcessId, string.Join(", ", Providers.Select(p => $"{p.Name}={p.BaseUrl}")));
+        if (Connections.LoadError is { } error)
+            _app.Logger.LogError("providers.json wasn't used, so only the built-in connections are available: {Error}", error);
     }
 
     public async Task StopAsync()

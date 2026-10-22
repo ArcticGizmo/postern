@@ -34,11 +34,19 @@ await session.Dispatch(() =>
         Request(previous: null, signed: false, name: "api", exe: @"C:\Code\example-stack\api\bin\Debug\api.exe"),
         Request(previous: null, signed: false, name: "api-jobs", exe: @"C:\Code\example-stack\api\bin\Debug\api.exe"),
         Request(previous: null, signed: false, name: "worker", exe: @"C:\Code\example-stack\worker\bin\Debug\worker.exe")), "approval-queue");
+    Save(Approval(Request(previous: null, signed: true, name: "pylon", exe: @"C:\Tools\Pylon\pylon.exe",
+        scopes: ["GET github/notifications", "GET github-work/repos/example-org/*/actions/runs", "GET jira/rest/api/3/search", "POST linear/graphql"])),
+        "approval-connections");
 
     var updater = new Postern.App.Services.Updater();
     var broker = Broker();
     Save(Shell(broker, updater, MainWindow.AppsKey), "apps");
-    Save(Shell(broker, updater, MainWindow.CredentialsKey), "credentials");
+    Save(Shell(broker, updater, MainWindow.ConnectionsKey), "connections");
+    Save(new AddConnectionDialog(broker, "jira"), "connections-add");
+    Save(new CredentialDialog(broker, broker.Connections.Find("jira")!, replacing: true), "connections-credential");
+    Save(new ProvidersJsonDialog(broker), "connections-json");
+    Save(new ConfirmDialog("Remove octopus?", "Its credential is deleted too. Apps with scopes on octopus keep their approval, " +
+        "but their requests fail until a connection with that name exists again.", "Remove"), "connections-remove");
     Save(Shell(broker, updater, MainWindow.AuditKey), "audit");
     Save(Shell(broker, updater, MainWindow.GeneralKey), "general");
     Save(Shell(broker, updater, MainWindow.UpdatesKey, p => p.ShowAvailable("0.3.0", null)), "update-available");
@@ -71,21 +79,27 @@ static MainWindow Shell(BrokerRuntime broker, Postern.App.Services.Updater updat
 
 static ApprovalWindow Approval(params ApprovalRequest[] requests)
 {
-    var window = new ApprovalWindow();
+    var window = new ApprovalWindow(name => name switch
+    {
+        "github" => "GitHub · api.github.com",
+        "github-work" => "GitHub · api.github.com",
+        "jira" => "Jira Cloud · example.atlassian.net",
+        _ => null,
+    });
     foreach (var request in requests)
         window.Enqueue(new PendingApproval(request));
     return window;
 }
 
 static ApprovalRequest Request(IReadOnlyList<Scope>? previous, bool signed, string name = "perch",
-    string exe = @"C:\Users\Example\AppData\Local\Perch\current\Perch.exe") => new(
+    string exe = @"C:\Users\Example\AppData\Local\Perch\current\Perch.exe", string[]? scopes = null) => new(
     "a1b2c3-" + name,
     name,
     exe,
     (uint)(4242 + name.Length),
     signed,
     signed ? "CN=Example Publisher Ltd, O=Example Publisher Ltd, C=GB" : null,
-    [Scope.Parse("GET github/repos/*/*/pulls/**"), Scope.Parse("POST github/graphql"), Scope.Parse("GET github/notifications")],
+    [.. (scopes ?? ["GET github/repos/*/*/pulls/**", "POST github/graphql", "GET github/notifications"]).Select(Scope.Parse)],
     previous);
 
 static BrokerRuntime Broker()
@@ -120,15 +134,33 @@ static BrokerRuntime Broker()
         audit.Write(new AuditEntry(now.AddMinutes(-rows.Length), app.EndsWith(".exe") ? null : "id", app.EndsWith(".exe") ? null : app, 4242,
             @"C:\Example\" + app, method, "github", path, path.Contains("pulls") ? 12 : 0, status, outcome, ms));
 
+    // A throwaway data folder, so the JSON editor shows this example rather than the real providers.json.
+    var dataDir = Path.Combine(Path.GetTempPath(), "postern-snapshots-" + Guid.NewGuid().ToString("N")[..8]);
+    ProvidersFile.Write(dataDir, ProvidersFile.Serialize(
+    [
+        new ProviderEntry { Name = "github-work", Template = "github" },
+        new ProviderEntry { Name = "jira", Template = "jira", BaseUrl = "https://example.atlassian.net" },
+        new ProviderEntry { Name = "octopus", Template = "octopus", BaseUrl = "https://octopus.example.com" },
+        new ProviderEntry { Name = "datadog", Template = "datadog", BaseUrl = "https://api.datadoghq.eu" },
+    ]));
+    var providers = BrokerOptions.LoadProviders(dataDir);
+    ProviderDefinition Find(string name) => providers.First(p => p.Name == name);
+
     var credentials = new InMemoryCredentialStore();
     credentials.Write(ProviderDefinition.GitHub.CredentialTarget, "not-a-real-token");
+    credentials.Write(Find("jira").CredentialTarget, Find("jira").EncodeCredential(new Dictionary<string, string> { ["email"] = "someone@example.com", ["token"] = "not-real" }));
+    // Entered while github-work pointed at an enterprise server, so it's held back from api.github.com.
+    credentials.Write(Find("github-work").CredentialTarget,
+        ProviderTemplates.Find("github-enterprise")!.Connect("github-work", new Dictionary<string, string> { ["host"] = "github.example.com" })
+            .EncodeCredential(new Dictionary<string, string> { ["token"] = "not-real" }));
 
     var broker = BrokerRuntime.Create(
         new BrokerOptions
         {
             PipeName = "postern-snapshots",
             PublishDiscovery = false,
-            Providers = [ProviderDefinition.GitHub, new ProviderDefinition("octopus", new Uri("https://octopus.example.com"), AuthStyle.Header, "X-Octopus-ApiKey")],
+            DataDirectory = dataDir,
+            Providers = providers,
         },
         new DenyAllPrompt(),
         new BrokerOverrides { Credentials = credentials, Registrations = registrations, Audit = audit });

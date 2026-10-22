@@ -124,7 +124,8 @@ public class ProxyTests : IAsyncLifetime
     public async Task NonAsciiCredentialIsRefusedNotSent()
     {
         using var client = await _h.RegisteredClient("GET fake/echo");
-        _h.Credentials.Write("postern:fake:default", "﻿secret-with-bom");
+        var origin = _h.Broker.Connections.Find("fake")!.Origin;
+        _h.Credentials.Write("postern:fake:default", "{\"origin\":\"" + origin + "\",\"values\":{\"secret\":\"\\ufeffsecret-with-bom\"}}");
         using var http = client.CreateHttpClient("fake");
         using var response = await http.GetAsync("echo");
         Assert.Equal("credential-invalid", await Code(response));

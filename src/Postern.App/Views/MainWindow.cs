@@ -18,7 +18,7 @@ namespace Postern.App.Views;
 internal sealed class MainWindow : Window
 {
     public const string AppsKey = "apps";
-    public const string CredentialsKey = "credentials";
+    public const string ConnectionsKey = "connections";
     public const string AuditKey = "audit";
     public const string GeneralKey = "general";
     public const string UpdatesKey = "updates";
@@ -27,7 +27,7 @@ internal sealed class MainWindow : Window
 
     readonly Updater _updater;
     readonly AppsPage _apps;
-    readonly CredentialsPage _credentials;
+    readonly ConnectionsPage _connections;
     readonly AuditPage _audit;
     readonly UpdatesPage _updates;
     readonly Panel _content = new();
@@ -47,13 +47,13 @@ internal sealed class MainWindow : Window
         Icon = TrayArt.WindowIcon();
 
         _apps = new AppsPage(broker);
-        _credentials = new CredentialsPage(broker);
+        _connections = new ConnectionsPage(broker);
         _audit = new AuditPage(broker);
         _updates = new UpdatesPage(updater, shutDownForUpdate);
 
         var nav = new StackPanel { Margin = new Thickness(0, 4, 0, 0) };
         AddPage(nav, AppsKey, "Apps", _apps);
-        AddPage(nav, CredentialsKey, "Credentials", _credentials);
+        AddPage(nav, ConnectionsKey, "Connections", _connections);
         AddPage(nav, AuditKey, "Audit log", _audit);
         AddPage(nav, GeneralKey, "General", new GeneralPage());
         AddPage(nav, UpdatesKey, "Updates", _updates);
@@ -81,7 +81,7 @@ internal sealed class MainWindow : Window
         grid.Children.Add(_content);
         Content = grid;
 
-        _credentials.Changed += UpdateBadges;
+        _connections.Changed += UpdateBadges;
         broker.Registrations.Changed += OnRegistrationsChanged;
         updater.AvailableChanged += OnAvailableChanged;
         Closed += (_, _) =>
@@ -125,7 +125,7 @@ internal sealed class MainWindow : Window
         switch (key)
         {
             case AuditKey: _audit.Refresh(); break;
-            case CredentialsKey: _credentials.Refresh(); break;
+            case ConnectionsKey: _connections.Refresh(); break;
             case UpdatesKey: _updates.Shown(); break;
         }
     }
@@ -188,7 +188,7 @@ internal sealed class MainWindow : Window
 
     void UpdateBadges()
     {
-        SetBadge(CredentialsKey, _credentials.Missing > 0 ? "missing" : null, Ui.Warning);
+        SetBadge(ConnectionsKey, _connections.Missing > 0 ? "missing" : null, Ui.Warning);
         SetBadge(UpdatesKey, _updater.Available is null ? null : "new", Ui.Accent);
     }
 

@@ -16,6 +16,8 @@ Branches: **postern** `poc/walking-skeleton`; **perch** `spike/postern-transport
   stack of small shadow apps comparing gh with Postern.
 - **Session E** (~30 min): install from a locally built release next to Postern (Dev), then update through
   the Updates page, using a local feed because nothing is on GitHub yet. See `docs/releasing.md`.
+- **Session F** (~15 min): connections. A second GitHub account, a template with two fields, a custom
+  connection written as JSON, and a credential refusing to follow a repointed connection. See `docs/connections.md`.
 
 ---
 
@@ -71,15 +73,15 @@ Branches: **postern** `poc/walking-skeleton`; **perch** `spike/postern-transport
 - [ ] **A2.1** `& $postern`
   **Expect:** within about 2 s, a violet arched-gate icon on a purple tile in the tray (the dev colours; it may be in
   the ^ overflow), and the
-  Postern window opens by itself on **Credentials**, with an amber *missing* badge beside it in the left nav.
+  Postern window opens by itself on **Connections**, with an amber *missing* badge beside it in the left nav.
   Result:
 
-- [ ] **A2.2** In Credentials, the github row says *missing* in amber. Click **Set**, paste the PAT, click **Save**.
+- [ ] **A2.2** In Connections, the github row says *missing* in amber. Click **Set**, paste the PAT, click **Save**.
   **Expect:** *stored* in green, with **Replace** and **Remove** buttons, and the *missing* badge gone. Nothing shows
   the token.
   Result:
 
-- [ ] **A2.3** Close the window, then click the tray icon and pick **Credentials** in the nav.
+- [ ] **A2.3** Close the window, then click the tray icon and pick **Connections** in the nav.
   **Expect:** still *stored*.
   Result:
 
@@ -378,7 +380,7 @@ Shadow mode compares answers, so Postern's PAT needs the same reach as your gh l
   **Report:** which route the org allowed. That's a finding for the scope doc.
   Result:
 
-- [ ] **C0.2** Store it: Postern → Credentials → Replace.
+- [ ] **C0.2** Store it: Postern → Connections → github → Replace.
 
 ### C1. Run Perch in shadow mode
 
@@ -467,7 +469,7 @@ Shadow mode compares answers, so Postern's PAT needs the same reach as your gh l
   ```
   **Expect:** the build succeeds, 102 tests pass, and the tray icon is back as **Postern (Dev)**. Debug builds are
   now a separate profile (pipe `postern-dev`, data in `%LOCALAPPDATA%\Postern.Dev`, credentials under
-  `postern-dev:`), so it starts fresh: Postern opens on Credentials. Paste your PAT there. Earlier approvals stay
+  `postern-dev:`), so it starts fresh: Postern opens on Connections. Paste your PAT there. Earlier approvals stay
   with the old data and aren't carried over. The Debug `$cli` and the shadow apps talk to the dev profile on their own.
   Result:
 
@@ -606,7 +608,7 @@ a new terminal, in the repo folder.
   ```
   **Expect:** the two hashes match (case aside). There's no admin prompt. A second, teal tray icon appears, with
   **Postern 0.1.0** in its menu header, next to Postern (Dev)'s violet one. The Start menu has a Postern entry, and there's **no**
-  desktop shortcut. Add your PAT under Credentials if it asks.
+  desktop shortcut. Add your PAT under Connections if it asks.
   Result:
 
 - [ ] **E1.2** Both profiles answer, each on its own pipe:
@@ -704,6 +706,54 @@ a new terminal, in the repo folder.
 
 ---
 
+## Session F: connections
+
+In Postern (Dev), started with `.\run.cmd`. `$cli` as in A0.7.
+
+- [ ] **F1** Connections → **Add connection** → GitHub. Name it `github-two`, click **Add**.
+  **Expect:** the add dialog closes and a "Set the credential for github-two" dialog opens over the window, showing
+  `https://api.github.com` as where it's sent. Paste the same test PAT, **Save**: the card says *stored*. Nothing
+  on the page moved or expanded at any point.
+  Result:
+
+- [ ] **F2** Use it with no restart:
+  ```powershell
+  & $cli register --name two --scope "GET github-two/user"
+  & $cli call --name two GET github-two/user | Select-String '"type"'
+  ```
+  **Expect:** the prompt's **Through** section says `github-two  GitHub · api.github.com`. After Allow, the call
+  prints `"type": "User"`.
+  Result:
+
+- [ ] **F3** **Add connection** → Jira Cloud. Leave **Site** empty and click **Add**.
+  **Expect:** "Site is required." under the fields, and the dialog stays open. Type `evil.example/x` instead.
+  **Expect:** a message that it should be a single name. Then press **Esc**: the dialog closes and nothing was added.
+  Result:
+
+- [ ] **F4** **Add connection** → Datadog, keep the defaults, **Add**.
+  **Expect:** the credential dialog has two inputs, API key and Application key. Type anything into one only and
+  **Save**. **Expect:** "Not saved: Application key is empty." and the dialog stays open with what you typed.
+  **Cancel**, then the card's **Remove**: a confirmation dialog explains the credential goes too. **Remove**; the card goes.
+  Result:
+
+- [ ] **F5** **Edit as JSON**. Change `github-two`'s entry to
+  `{ "name": "github-two", "template": "github-enterprise", "baseUrl": "https://github.example.com/api/v3" }`
+  and **Save**.
+  **Expect:** the card says the credential was entered for `https://api.github.com` and the connection now points
+  at `https://github.example.com`. Then `& $cli call --name two GET github-two/user` fails with
+  `credential-invalid`, and nothing reaches github.example.com.
+  Result:
+
+- [ ] **F6** **Edit as JSON**, delete a closing `]`, **Save**.
+  **Expect:** a "Not valid JSON" message under the editor, the dialog still open, and the cards behind it unchanged. **Cancel**.
+  Result:
+
+- [ ] **F7** Remove `github-two`. Then `cmdkey /list | Select-String github-two`.
+  **Expect:** no output: its credential went with it. `& $cli credential list` no longer lists it.
+  Result:
+
+---
+
 ## Decisions
 
 | Question | Decision | Where |
@@ -719,4 +769,7 @@ a new terminal, in the repo folder.
 | One-liner installer? | **Yes**, `irm …/install.ps1 \| iex`, verifying Setup against `SHA256SUMS.txt` and refusing an elevated shell | `install.ps1`, `tools/test-install.ps1` |
 | Should Postern itself run elevated? | **No.** A UAC-elevated start shows a warning and exits with 5. UAC-off machines aren't refused (there's no other token to use) | `Elevation` |
 | Graph via WAM (S5) | **Deferred.** Internal approval for an Entra app registration will take time | `docs/spike-plan.md` S5 |
+| Several accounts for one service | **Named connections.** Each account is its own connection (`github`, `github-work`) with its own credential; scopes name the connection. Explicit, and one app can use several | `Connections`, `ProviderTemplates` |
+| Can a credential follow a repointed connection? | **No.** Each credential records the origin it was entered for, and the proxy only sends it there. Repointing means entering it again | `ProviderDefinition.DecodeCredential` |
+| Where are connections edited? | **In the app, in dialogs:** templates through a form, everything else as JSON in an editor that validates before saving. Every change opens a modal, so the page never reflows. Changes apply without a restart | `ConnectionsPage`, `Dialog` |
 | Merge order | **No merging during greenfield work.** Postern keeps building on `poc/walking-skeleton`; Perch stays on `spike/postern-transport` | |

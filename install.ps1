@@ -142,7 +142,7 @@ The download has been deleted. Retry; if it keeps failing, report it at $(Get-Re
     Write-Host ''
     Write-Host "Postern $tag is installed and running in the system tray." -ForegroundColor Green
     Write-Host '  Click the tray icon to open Postern, then:' -ForegroundColor DarkGray
-    Write-Host '  Add your GitHub token: Credentials.' -ForegroundColor DarkGray
+    Write-Host '  Add your GitHub token: Connections.' -ForegroundColor DarkGray
     Write-Host '  Keep it running: General -> Start Postern when I sign in.' -ForegroundColor DarkGray
     Write-Host '  Updates from here on are in-app: Updates.' -ForegroundColor DarkGray
     Write-Host "  The CLI is at $env:LOCALAPPDATA\Postern\current\postern-cli.exe" -ForegroundColor DarkGray
