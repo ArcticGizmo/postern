@@ -105,6 +105,55 @@ public sealed class WindowsCredentialStore : ICredentialStore
     }
 
     public bool Delete(string target) => CredDelete(target, TypeGeneric, 0);
+
+    [DllImport("advapi32.dll", EntryPoint = "CredEnumerateW", CharSet = CharSet.Unicode, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    static extern bool CredEnumerate(string filter, uint flags, out uint count, out IntPtr credentials);
+
+    /// <summary>
+    /// Deletes every generic credential whose name starts with <paramref name="prefix"/> (e.g. "postern:"), for
+    /// uninstall. Returns the names deleted. Only Postern writes under its prefix, so nothing else is touched.
+    /// </summary>
+    public IReadOnlyList<string> DeleteAll(string prefix)
+    {
+        if (!CredEnumerate(prefix + "*", 0, out var count, out var list))
+        {
+            var error = Marshal.GetLastPInvokeError();
+            return error == ErrorNotFound ? [] : throw new Win32Exception(error);
+        }
+
+        var targets = new List<string>();
+        try
+        {
+            for (var i = 0; i < count; i++)
+            {
+                var credential = Marshal.PtrToStructure<Credential>(Marshal.ReadIntPtr(list, i * IntPtr.Size));
+                if (credential.Type == TypeGeneric && credential.TargetName.StartsWith(prefix, StringComparison.Ordinal))
+                    targets.Add(credential.TargetName);
+            }
+        }
+        finally
+        {
+            CredFree(list);
+        }
+        return [.. targets.Where(Delete)];
+    }
+}
+
+/// <summary>
+/// Stores <c>postern:{provider}:{account}</c> as <c>{ns}:{provider}:{account}</c>, so the dev profile has its own
+/// credentials next to the installed Postern's.
+/// </summary>
+public sealed class NamespacedCredentialStore(ICredentialStore inner, string ns) : ICredentialStore
+{
+    const string Prefix = "postern:";
+
+    public static string Map(string target, string ns) =>
+        target.StartsWith(Prefix, StringComparison.Ordinal) ? ns + ":" + target[Prefix.Length..] : target;
+
+    public string? Read(string target) => inner.Read(Map(target, ns));
+    public void Write(string target, string secret) => inner.Write(Map(target, ns), secret);
+    public bool Delete(string target) => inner.Delete(Map(target, ns));
 }
 
 /// <summary>For tests.</summary>

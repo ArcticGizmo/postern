@@ -19,8 +19,8 @@ internal static class CredentialCommand
     {
         var verb = args.ElementAtOrDefault(0);
         var dataDirIndex = Array.IndexOf(args, "--data-dir");
-        var dataDir = dataDirIndex >= 0 && dataDirIndex + 1 < args.Length ? Path.GetFullPath(args[dataDirIndex + 1]) : BrokerOptions.DefaultDataDirectory;
-        var store = new WindowsCredentialStore();
+        var dataDir = dataDirIndex >= 0 && dataDirIndex + 1 < args.Length ? Path.GetFullPath(args[dataDirIndex + 1]) : Profile.DataDirectory;
+        var store = Profile.CredentialStore();
 
         if (verb == "list")
         {
@@ -37,9 +37,10 @@ internal static class CredentialCommand
         }
 
         var target = new ProviderDefinition(name, new Uri("https://unused.invalid")).CredentialTarget;
+        var stored = Profile.StoredName(target);
         if (verb == "delete")
         {
-            write(store.Delete(target) ? $"Deleted {target}." : $"Nothing stored at {target}.");
+            write(store.Delete(target) ? $"Deleted {stored}." : $"Nothing stored at {stored}.");
             return 0;
         }
 
@@ -61,7 +62,7 @@ internal static class CredentialCommand
             return 1;
         }
         store.Write(target, secret);
-        write($"Stored as {target} in Windows Credential Manager.");
+        write($"Stored as {stored} in Windows Credential Manager.");
         return 0;
     }
 

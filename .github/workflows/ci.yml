@@ -1,0 +1,61 @@
+name: CI
+
+# Builds and runs the tests (including the installer's) on every pull request, on pushes to main, and by hand on any
+# branch (workflow_dispatch). Docs and captures don't trigger a pull request run.
+on:
+  pull_request:
+    paths-ignore: ['*.md', 'docs/**', 'captures/**']
+  # main too, so install.ps1 (which the one-liner fetches straight from main) is checked as it lands.
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Read-only: nothing here writes to the repo. Every action is pinned to a commit SHA (the version is in the trailing
+# comment); Dependabot proposes bumps.
+permissions:
+  contents: read
+
+# A newer push to the same PR supersedes a run still in progress.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Build
+        run: dotnet build postern.slnx -c Release
+
+      # --blame-hang-timeout turns a hung pipe test into a failure with a dump, instead of a run that sits until the
+      # job timeout.
+      - name: Test
+        run: dotnet test postern.slnx -c Release --no-build --blame-hang-timeout 10m --logger "trx;LogFileName=results.trx" --results-directory TestResults
+
+      # Windows PowerShell 5.1, because that's what the one-liner runs under on most machines. Its download checks
+      # skip here (no releases\ folder), and nothing in it touches the network.
+      - name: Test (installer)
+        shell: powershell
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File tools\test-install.ps1
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: test-results
+          path: TestResults/
+          if-no-files-found: ignore

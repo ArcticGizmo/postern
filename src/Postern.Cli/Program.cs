@@ -42,7 +42,7 @@ List<string> TakeAll(string name)
 bool Flag(string name) => rest.Remove(name);
 
 var appName = Take("--name") ?? "cli";
-var pipe = Take("--pipe") ?? new PosternOptions { AppName = appName }.PipeName;
+var pipe = Take("--pipe") ?? (Environment.GetEnvironmentVariable("POSTERN_PIPE") is { Length: > 0 } fromEnvironment ? fromEnvironment : Postern.Broker.Profile.PipeName);
 var waitText = Take("--wait");
 if (waitText is not null && (!int.TryParse(waitText, out var waitSeconds) || waitSeconds < 0))
     return Usage();
@@ -191,7 +191,7 @@ static int Usage()
         postern-cli forget   [--name N]
         postern-cli credential set|delete <provider> | credential list   [--data-dir DIR]
                     (secret from stdin or a hidden prompt; stored in Windows Credential Manager for Postern)
-        Options: --pipe NAME (default %POSTERN_PIPE% or "postern"). --name defaults to "cli".
+        Options: --pipe NAME (default %POSTERN_PIPE%, else "postern", or "postern-dev" for a Debug build). --name defaults to "cli".
                  --wait SECONDS: if Postern isn't running yet, wait for it (status, register, call).
         Exit: 0 ok, 1 provider returned an error, 2 usage, 3 Postern refused or isn't running.
         """);

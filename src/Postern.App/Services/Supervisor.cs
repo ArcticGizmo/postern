@@ -7,7 +7,8 @@ namespace Postern.App.Services;
 /// It's what the login entry launches. Chosen over a scheduled task with restart-on-failure because creating
 /// scheduled tasks is a classic persistence signal for EDR, and Task Scheduler's minimum restart interval is 1 minute.
 /// <list type="bullet">
-/// <item>Exit code 0 (Quit from the tray) or <see cref="Program.ExitPipeInUse"/> (another Postern owns the pipe): stop.</item>
+/// <item>Exit code 0 (Quit from the tray), <see cref="Program.ExitPipeInUse"/> (another Postern owns the pipe) or
+/// <see cref="Program.ExitUpdating"/> (an update is about to replace the files): stop.</item>
 /// <item>Anything else: restart after 1, 2, 5, 10 s… If it crashes 5 times within 2 minutes, give up and log it.</item>
 /// </list>
 /// </summary>
@@ -33,13 +34,15 @@ internal static class Supervisor
             var psi = new ProcessStartInfo(Environment.ProcessPath!) { UseShellExecute = false };
             foreach (var a in args.ForChild())
                 psi.ArgumentList.Add(a);
+            psi.Environment[Program.SupervisedVariable] = "1";
 
             using var child = Process.Start(psi)!;
             log($"Supervisor started Postern pid {child.Id}.");
             child.WaitForExit();
             var code = child.ExitCode;
 
-            if (code is 0 or Program.ExitPipeInUse)
+            // An update needs every process out of the install folder; Velopack restarts the supervisor afterwards.
+            if (code is 0 or Program.ExitPipeInUse or Program.ExitUpdating)
             {
                 log($"Postern exited with {code}; supervisor stopping.");
                 return code;

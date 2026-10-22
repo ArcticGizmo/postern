@@ -20,8 +20,8 @@ internal sealed record AppArgs(
     {
         var headless = false;
         var supervise = false;
-        var pipe = BrokerOptions.DefaultPipeName;
-        var dataDir = BrokerOptions.DefaultDataDirectory;
+        var pipe = Profile.PipeName;
+        var dataDir = Profile.DataDirectory;
         var autoApprove = new List<string>();
 
         for (var i = 0; i < args.Length; i++)
@@ -33,6 +33,9 @@ internal sealed record AppArgs(
                 case "--pipe": pipe = args[++i]; break;
                 case "--data-dir": dataDir = Path.GetFullPath(args[++i]); break;
                 case "--dev-auto-approve": autoApprove.AddRange(args[++i].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)); break;
+                // Velopack's own hook arguments. VelopackApp.Run() handles and exits on the ones it knows, and a
+                // newer Velopack adding one mustn't stop Postern starting.
+                case var velopack when velopack.StartsWith("--veloapp-", StringComparison.Ordinal): break;
                 default: throw new ArgumentException($"Unknown argument '{args[i]}'.");
             }
         }

@@ -68,7 +68,10 @@ dotnet build $project -nologo -v q
 if ($LASTEXITCODE -ne 0) { throw 'Build failed.' }
 
 if ($Fresh) {
-    foreach ($app in $apps) { Remove-Item (Join-Path $tokens "$($app.Name).token") -ErrorAction SilentlyContinue }
+    # A Debug build talks to postern-dev, and a token for a non-default pipe is stored as <name>.<pipe>.token.
+    foreach ($app in $apps) {
+        Remove-Item (Join-Path $tokens "$($app.Name).token"), (Join-Path $tokens "$($app.Name).postern-dev.token") -ErrorAction SilentlyContinue
+    }
     Write-Host 'Forgot the shadow apps'' tokens: each one will ask Postern again.'
 }
 

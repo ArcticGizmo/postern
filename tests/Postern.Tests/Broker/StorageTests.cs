@@ -34,6 +34,47 @@ public sealed class StorageTests : IDisposable
     };
 
     [Fact]
+    public void DevCredentialsAreStoredApartFromTheRealOnes()
+    {
+        var real = new InMemoryCredentialStore();
+        var dev = new NamespacedCredentialStore(real, "postern-dev");
+        real.Write("postern:github:default", "real-pat");
+
+        Assert.Null(dev.Read("postern:github:default"));
+        dev.Write("postern:github:default", "dev-pat");
+        Assert.Equal("dev-pat", real.Read("postern-dev:github:default"));
+        Assert.Equal("real-pat", real.Read("postern:github:default"));
+
+        Assert.True(dev.Delete("postern:github:default"));
+        Assert.Equal("real-pat", real.Read("postern:github:default"));
+    }
+
+    [Fact]
+    public void UninstallSweepDeletesOnlyItsOwnPrefix()
+    {
+        var store = new WindowsCredentialStore();
+        var prefix = $"postern-test-{Guid.NewGuid():N}:";
+        var neighbour = $"postern-test-{Guid.NewGuid():N}x:github:default"; // shares the start of the name, not the prefix
+        try
+        {
+            store.Write(prefix + "github:default", "a");
+            store.Write(prefix + "octopus:default", "b");
+            store.Write(neighbour, "c");
+
+            Assert.Equal(2, store.DeleteAll(prefix).Count);
+            Assert.Null(store.Read(prefix + "github:default"));
+            Assert.Equal("c", store.Read(neighbour));
+            Assert.Empty(store.DeleteAll(prefix));
+        }
+        finally
+        {
+            store.Delete(prefix + "github:default");
+            store.Delete(prefix + "octopus:default");
+            store.Delete(neighbour);
+        }
+    }
+
+    [Fact]
     public void RegistrationsSurviveARestart()
     {
         var database = Database();

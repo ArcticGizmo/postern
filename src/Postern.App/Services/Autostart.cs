@@ -9,7 +9,8 @@ namespace Postern.App.Services;
 internal static class Autostart
 {
     const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
-    const string ValueName = "Postern";
+    // Its own entry for a dev build, so ticking Start at login there can't repoint the installed Postern's.
+    static readonly string ValueName = "Postern" + Broker.Profile.DisplaySuffix;
 
     public static bool IsEnabled()
     {
@@ -29,12 +30,19 @@ internal static class Autostart
         using var key = Registry.CurrentUser.CreateSubKey(RunKey);
         if (enabled)
         {
-            var extra = args.PipeName == Broker.BrokerOptions.DefaultPipeName ? "" : $" --pipe {args.PipeName}";
+            var extra = args.PipeName == Broker.Profile.PipeName ? "" : $" --pipe {args.PipeName}";
             key.SetValue(ValueName, $"\"{Environment.ProcessPath}\" --supervise{extra}");
         }
         else
         {
             key.DeleteValue(ValueName, throwOnMissingValue: false);
         }
+    }
+
+    /// <summary>For uninstall, where there are no parsed arguments: whatever the entry says, it's about to point at nothing.</summary>
+    public static void Remove()
+    {
+        using var key = Registry.CurrentUser.OpenSubKey(RunKey, writable: true);
+        key?.DeleteValue(ValueName, throwOnMissingValue: false);
     }
 }

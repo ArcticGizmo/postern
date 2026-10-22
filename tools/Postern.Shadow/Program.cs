@@ -51,7 +51,7 @@ if (name is null || probes.Count == 0 || rest.Count > 0)
         postern-shadow --name NAME --probe KIND [--probe ...] [--every SECONDS (min 10, default 60)] [--once]
                        [--provider NAME (default github; a test Postern can point another name at a fake)]
         Probes: {Probe.Kinds}
-        The pipe is %POSTERN_PIPE% or "postern", as for every Postern client.
+        The pipe is %POSTERN_PIPE%, else "postern-dev" for a Debug build and "postern" for Release.
         """);
     return ExitUsage;
 }
@@ -70,7 +70,7 @@ Console.CancelKeyPress += (_, e) =>
     stop.Cancel();
 };
 
-using var postern = new PosternClient(new PosternOptions { AppName = name });
+using var postern = new PosternClient(new PosternOptions { AppName = name, PipeName = DefaultPipe() });
 using var github = postern.CreateHttpClient(provider);
 github.DefaultRequestHeaders.UserAgent.ParseAdd("postern-shadow/0.1");
 string[] scopes = [.. probes.Select(p => p.ScopeFor(provider)).Distinct()];
@@ -169,6 +169,21 @@ async Task<string> AskPostern(Probe probe)
     {
         return "stopped";
     }
+}
+
+// The same rule as Postern.Broker.Profile (this tool references only the client): a Debug build talks to the dev
+// Postern, unless POSTERN_PIPE says otherwise or POSTERN_DEV forces the profile.
+static string DefaultPipe()
+{
+    if (Environment.GetEnvironmentVariable("POSTERN_PIPE") is { Length: > 0 } pipe)
+        return pipe;
+    var dev = Environment.GetEnvironmentVariable("POSTERN_DEV");
+#if DEBUG
+    var isDev = string.IsNullOrEmpty(dev) || !(dev == "0" || dev.Equals("false", StringComparison.OrdinalIgnoreCase));
+#else
+    var isDev = !string.IsNullOrEmpty(dev) && !(dev == "0" || dev.Equals("false", StringComparison.OrdinalIgnoreCase));
+#endif
+    return isDev ? "postern-dev" : PosternOptions.DefaultPipeName;
 }
 
 static async Task<(string Summary, long Ms)> Timed(Func<Task<string>> ask)

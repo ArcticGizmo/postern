@@ -5,6 +5,7 @@ using Postern.App.Services;
 using Postern.Broker;
 using Postern.Broker.Pipe;
 using Postern.Core.Apps;
+using Velopack;
 
 namespace Postern.App;
 
@@ -14,6 +15,10 @@ internal static class Program
     public const int ExitPipeInUse = 3;
     public const int ExitBrokerFailed = 4;
     public const int ExitElevated = 5;
+    public const int ExitUpdating = 6;
+
+    /// <summary>Set by <see cref="Supervisor"/> on its child, so an update restart can bring the watchdog back too.</summary>
+    public const string SupervisedVariable = "POSTERN_SUPERVISED";
 
     /// <summary>Set before Avalonia starts; the App reads it.</summary>
     public static AppArgs Args { get; internal set; } = null!;
@@ -24,6 +29,12 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
+        // First, before argument parsing: Velopack runs its install/update/uninstall hooks by launching the exe with
+        // its own arguments, and exits here when it does.
+        VelopackApp.Build()
+            .OnBeforeUninstallFastCallback(_ => Updater.CleanUpBeforeUninstall())
+            .Run();
+
         try
         {
             Args = AppArgs.Parse(args);
@@ -36,18 +47,19 @@ internal static class Program
         }
 
         var console = (Args.Headless || Args.Supervise) && AttachParentConsole();
-        Logs = new FileLoggerProvider(Path.Combine(Args.DataDirectory, "logs"), console);
-        var log = Logs.CreateLogger("Postern.App");
 
+        // Before the log file too: an elevated run would leave Administrators-owned files in the data folder.
         if (Elevation.IsElevatedByUac())
         {
-            log.LogError("Refusing to run elevated.");
             if (console)
                 Console.Error.WriteLine(Elevation.Message);
             else
                 Elevation.ShowRefusal();
             return ExitElevated;
         }
+
+        Logs = new FileLoggerProvider(Path.Combine(Args.DataDirectory, "logs"), console);
+        var log = Logs.CreateLogger("Postern.App");
 
         if (Args.Supervise)
             return Supervisor.Run(Args, message => Logs.CreateLogger("Postern.Supervisor").LogInformation("{Message}", message));
@@ -62,7 +74,7 @@ internal static class Program
         if (Args.Headless)
             return RunHeadless(log).GetAwaiter().GetResult();
 
-        // The shutdown code is what the supervisor reads: 0 (Quit) stops it, anything else restarts Postern.
+        // The shutdown code is what the supervisor reads: 0 (Quit) and ExitUpdating stop it, anything else restarts Postern.
         return BuildAvaloniaApp().StartWithClassicDesktopLifetime([]);
     }
 

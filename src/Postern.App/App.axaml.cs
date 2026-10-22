@@ -16,12 +16,16 @@ namespace Postern.App;
 public partial class App : Application
 {
     readonly AvaloniaApprovalPrompt _prompt = new();
+    readonly Updater _updater = new();
     ILogger _log = null!;
     BrokerRuntime? _broker;
+    IClassicDesktopStyleApplicationLifetime? _desktop;
     TrayIcon? _tray;
+    NativeMenuItem? _updateItem;
     AppsWindow? _apps;
     CredentialsWindow? _credentials;
     AuditWindow? _audit;
+    UpdateWindow? _updates;
     int _pendingPrompts;
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
@@ -32,6 +36,7 @@ public partial class App : Application
         {
             // Tray-resident: no main window, so don't exit when the last window closes.
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            _desktop = desktop;
             _log = Program.Logs.CreateLogger("Postern.App");
 
             _broker = Program.CreateBroker(Program.WithDevAutoApprove(_prompt, _log));
@@ -41,6 +46,7 @@ public partial class App : Application
                 _pendingPrompts = count;
                 UpdateTray();
             };
+            _updater.AvailableChanged += UpdateTray;
 
             SetupTray(desktop);
             desktop.ShutdownRequested += (_, _) => StopBroker();
@@ -56,6 +62,7 @@ public partial class App : Application
         {
             await _broker!.StartAsync();
             UpdateTray();
+            _updater.Start();
             if (_broker.Credentials.Read(Core.Providers.ProviderDefinition.GitHub.CredentialTarget) is null)
                 OpenCredentials(); // first run: nothing works until there's a credential
         }
@@ -89,7 +96,7 @@ public partial class App : Application
 
     void SetupTray(IClassicDesktopStyleApplicationLifetime desktop)
     {
-        var header = new NativeMenuItem($"Postern {BrokerRuntime.Version}{PipeSuffix}") { IsEnabled = false };
+        var header = new NativeMenuItem($"Postern{Profile.DisplaySuffix} {BrokerRuntime.Version}{PipeSuffix}") { IsEnabled = false };
 
         var apps = new NativeMenuItem("Apps…");
         apps.Click += (_, _) => OpenApps();
@@ -112,6 +119,9 @@ public partial class App : Application
         var folder = new NativeMenuItem("Open data folder");
         folder.Click += (_, _) => Process.Start(new ProcessStartInfo("explorer.exe", $"\"{Program.Args.DataDirectory}\"") { UseShellExecute = true });
 
+        _updateItem = new NativeMenuItem("Check for updates…");
+        _updateItem.Click += (_, _) => OpenUpdates();
+
         var quit = new NativeMenuItem("Quit Postern");
         quit.Click += (_, _) => desktop.Shutdown(0);
 
@@ -125,6 +135,7 @@ public partial class App : Application
             new NativeMenuItemSeparator(),
             autostart,
             folder,
+            _updateItem,
             new NativeMenuItemSeparator(),
             quit,
         };
@@ -134,22 +145,26 @@ public partial class App : Application
         TrayIcon.SetIcons(this, [_tray]);
     }
 
-    static string PipeSuffix => Program.Args.PipeName == BrokerOptions.DefaultPipeName ? "" : $" ({Program.Args.PipeName})";
+    static string PipeSuffix => Program.Args.PipeName == Profile.PipeName ? "" : $" ({Program.Args.PipeName})";
 
     void UpdateTray()
     {
         if (_tray is null || _broker is null)
             return;
         var approved = _broker.Registrations.All().Count(r => r.Status == RegistrationStatus.Approved);
+        var update = _updater.Available?.TargetFullRelease.Version.ToString();
         _tray.Icon = TrayArt.WindowIcon(attention: _pendingPrompts > 0);
-        _tray.ToolTipText = _pendingPrompts > 0
-            ? $"Postern{PipeSuffix}: {_pendingPrompts} app(s) waiting for approval"
-            : $"Postern{PipeSuffix}: {approved} app(s) allowed";
+        _tray.ToolTipText = (_pendingPrompts > 0
+            ? $"Postern{Profile.DisplaySuffix}{PipeSuffix}: {_pendingPrompts} app(s) waiting for approval"
+            : $"Postern{Profile.DisplaySuffix}{PipeSuffix}: {approved} app(s) allowed") + (update is null ? "" : $"\nUpdate {update} available");
+        if (_updateItem is not null)
+            _updateItem.Header = update is null ? "Check for updates…" : $"Update to {update}…";
     }
 
     void OpenApps() => Open(ref _apps, () => new AppsWindow(_broker!));
     void OpenCredentials() => Open(ref _credentials, () => new CredentialsWindow(_broker!));
     void OpenAudit() => Open(ref _audit, () => new AuditWindow(_broker!));
+    void OpenUpdates() => Open(ref _updates, () => new UpdateWindow(_updater, () => _desktop?.Shutdown(Program.ExitUpdating)));
 
     static void Open<T>(ref T? slot, Func<T> create) where T : Window
     {
@@ -174,6 +189,7 @@ public partial class App : Application
         if (ReferenceEquals(app._apps, window)) app._apps = null;
         if (ReferenceEquals(app._credentials, window)) app._credentials = null;
         if (ReferenceEquals(app._audit, window)) app._audit = null;
+        if (ReferenceEquals(app._updates, window)) app._updates = null;
     }
 
     static Task ShowFatal(string title, string message)

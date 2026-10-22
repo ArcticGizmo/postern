@@ -14,6 +14,8 @@ Branches: **postern** `poc/walking-skeleton`; **perch** `spike/postern-transport
 - **Session C** (a few days): Perch in shadow mode, then the cutover. **Parked**: Session D comes first.
 - **Session D** (~20 min, then a day or two in the background): the approval queue, the elevation guard, and a
   stack of small shadow apps comparing gh with Postern.
+- **Session E** (~30 min): install from a locally built release next to Postern (Dev), then update through
+  Tray → Check for updates, using a local feed because nothing is on GitHub yet. See `docs/releasing.md`.
 
 ---
 
@@ -257,7 +259,7 @@ Branches: **postern** `poc/walking-skeleton`; **perch** `spike/postern-transport
 
 - [ ] **A7.3** Check that no secret reached the logs:
   ```powershell
-  Select-String -Path "$env:LOCALAPPDATA\Postern\logs\*.log" -Pattern 'github_pat_|ghp_|Bearer '
+  Select-String -Path "$env:LOCALAPPDATA\Postern.Dev\logs\*.log" -Pattern 'github_pat_|ghp_|Bearer '
   ```
   **Expect:** no output.
   Result:
@@ -332,7 +334,7 @@ Do these before Session C. Perch's traffic would otherwise muddy the rate-limit 
   ```powershell
   1..5 | % { $p=[regex]::Match((& $cli status 2>$null), 'pid (\d+)').Groups[1].Value; if ($p) { Stop-Process -Id $p -Force }; Start-Sleep 4 }
   ```
-  **Expect:** after the fifth kill it doesn't come back, and today's log in `%LOCALAPPDATA%\Postern\logs` contains
+  **Expect:** after the fifth kill it doesn't come back, and today's log in `%LOCALAPPDATA%\Postern.Dev\logs` contains
   "crashed 5 times … giving up". Then start it again with `& $postern`.
   Result:
 
@@ -460,7 +462,10 @@ Shadow mode compares answers, so Postern's PAT needs the same reach as your gh l
   dotnet build postern.slnx; dotnet test postern.slnx
   & $postern
   ```
-  **Expect:** the build succeeds, 100 tests pass, and the tray icon is back.
+  **Expect:** the build succeeds, 102 tests pass, and the tray icon is back as **Postern (Dev)**. Debug builds are
+  now a separate profile (pipe `postern-dev`, data in `%LOCALAPPDATA%\Postern.Dev`, credentials under
+  `postern-dev:`), so it starts fresh: the Credentials window opens. Paste your PAT there. Earlier approvals stay
+  with the old data and aren't carried over. The Debug `$cli` and the shadow apps talk to the dev profile on their own.
   Result:
 
 ### D1. Elevation guard
@@ -562,6 +567,140 @@ reach as gh) first if you haven't. `gh auth status` must show you logged in.
 
 ---
 
+## Session E: install and update
+
+The one-liner can't be tried until a release is on GitHub and `install.ps1` is on `main`, so this session installs
+from a locally built Setup. The installer's logic is covered by `tools\test-install.ps1` (E1.4) in the meantime. Use
+a new terminal, in the repo folder.
+
+### E0. Clear the way for a fresh install
+
+- [ ] **E0.1** If a Postern from before Session D is still running (its tray says **Postern**, not
+  **Postern (Dev)**), untick its Start at login, then Tray → Quit.
+  Result:
+
+- [ ] **E0.2** `%LOCALAPPDATA%\Postern` still holds the data from the builds before Session D, and it's where the
+  installer puts Postern. Look at it, then move it out of the way (or delete it, if you don't want it):
+  ```powershell
+  Get-ChildItem "$env:LOCALAPPDATA\Postern"
+  Rename-Item "$env:LOCALAPPDATA\Postern" Postern.old-dev
+  ```
+  Your PAT from those builds is still in Credential Manager as `postern:github:default`, and the installed Postern
+  will find it there. If you want the install to start without one, delete it first: `cmdkey /delete:postern:github:default`.
+  Result:
+
+- [ ] **E0.3** In **Postern (Dev)**: Tray → Check for updates….
+  **Expect:** "This copy can't update itself", showing the `bin\Debug` path.
+  Result:
+
+### E1. Install
+
+- [ ] **E1.1** Build a release and install it:
+  ```powershell
+  .\scripts\publish.ps1 0.1.0
+  Get-FileHash .\releases\Postern-win-Setup.exe; Select-String .\releases\SHA256SUMS.txt -Pattern Setup
+  .\releases\Postern-win-Setup.exe
+  ```
+  **Expect:** the two hashes match (case aside). There's no admin prompt. A second tray icon appears, with
+  **Postern 0.1.0** in its menu header, next to Postern (Dev). The Start menu has a Postern entry, and there's **no**
+  desktop shortcut. Add your PAT under Credentials if it asks.
+  Result:
+
+- [ ] **E1.2** Both profiles answer, each on its own pipe:
+  ```powershell
+  $icli = "$env:LOCALAPPDATA\Postern\current\postern-cli.exe"
+  & $icli status; & $cli status
+  ```
+  **Expect:** `Postern 0.1.0 on \\.\pipe\postern`, then the dev build on `\\.\pipe\postern-dev`.
+  Result:
+
+- [ ] **E1.3** Register an app with the installed copy, to watch it through the updates below:
+  ```powershell
+  & $icli register --name e-test --scope "GET github/user"
+  & $icli call --name e-test GET github/user | Select-String '"type"'
+  ```
+  **Expect:** a prompt from **Postern** (not Postern (Dev)). After Allow, the call prints `"type": "User"`.
+  Result:
+
+- [ ] **E1.4** The installer's tests, against the release you just built:
+  ```powershell
+  powershell -NoProfile -File tools\test-install.ps1 | Select-String 'FAIL|SKIP|passed'
+  ```
+  **Expect:** `35 passed, 0 failed`, with no FAIL or SKIP lines.
+  Result:
+
+- [ ] **E1.5** Tray (the installed Postern) → Check for updates….
+  **Expect:** "Postern couldn't check for updates." with a not-found error, because
+  `github.com/ArcticGizmo/postern` has no releases yet. That's the right failure.
+  Result:
+
+### E2. Update from a local feed
+
+- [ ] **E2.1** Build a newer version into the same folder:
+  ```powershell
+  .\scripts\publish.ps1 0.1.1 -SkipTests
+  ```
+  Tray → Quit Postern. Then start the installed copy with the local feed:
+  ```powershell
+  $env:POSTERN_UPDATE_FEED = "$PWD\releases"; & "$env:LOCALAPPDATA\Postern\current\Postern.exe"
+  ```
+  **Expect:** about 30 seconds after start, the tray item changes to **Update to 0.1.1…**, and the tooltip says
+  "Update 0.1.1 available".
+  Result:
+
+- [ ] **E2.2** Click **Update to 0.1.1…**.
+  **Expect:** "Postern 0.1.1 is available", the three restart bullets, and an amber line naming the local folder.
+  There's no Release notes button for a local feed.
+  Result:
+
+- [ ] **E2.3** Click **Update and restart**.
+  **Expect:** a download percentage, then Postern disappears from the tray, a Velopack progress window may flash
+  up, and Postern comes back with **Postern 0.1.1** in its menu header. `& $icli status` shows 0.1.1, and
+  `& $icli call --name e-test GET github/user` still works with no new prompt. Postern (Dev) carries on throughout.
+  Result:
+
+### E3. Update under the supervisor
+
+- [ ] **E3.1** In the installed copy: Tray → tick **Start at login**. Then:
+  ```powershell
+  (Get-ItemProperty HKCU:\Software\Microsoft\Windows\CurrentVersion\Run).Postern
+  ```
+  **Expect:** `"…\AppData\Local\Postern\current\Postern.exe" --supervise`.
+  Result:
+
+- [ ] **E3.2** Run under the supervisor, as a login would, and offer it another version:
+  ```powershell
+  .\scripts\publish.ps1 0.1.2 -SkipTests
+  ```
+  Tray → Quit Postern. Then, in the terminal where `POSTERN_UPDATE_FEED` is set:
+  ```powershell
+  & "$env:LOCALAPPDATA\Postern\current\Postern.exe" --supervise
+  ```
+  **Expect:** two processes from the install folder (the supervisor and Postern):
+  `Get-Process Postern | ? Path -like "$env:LOCALAPPDATA\Postern\*"`.
+  Result:
+
+- [ ] **E3.3** Tray → Update to 0.1.2… → Update and restart.
+  **Expect:** Postern comes back as 0.1.2, and the installed copy has **two** processes again, so the watchdog came
+  back too: `Get-Process Postern | ? Path -like "$env:LOCALAPPDATA\Postern\*"`. Check it's really watching:
+  `Stop-Process -Id ([regex]::Match((& $icli status), 'pid (\d+)').Groups[1].Value) -Force`. Postern returns
+  within about 2 seconds.
+  Result:
+
+### E4. Uninstall (optional; reinstall afterwards with E1.1's Setup)
+
+- [ ] **E4.1** Windows Settings → Apps → Installed apps → Postern → Uninstall. Then:
+  ```powershell
+  Test-Path "$env:LOCALAPPDATA\Postern"; Test-Path "$env:LOCALAPPDATA\Postern.Data\postern.db"
+  (Get-ItemProperty HKCU:\Software\Microsoft\Windows\CurrentVersion\Run).Postern; Test-Path HKCU:\Software\Postern
+  cmdkey /list | Select-String 'postern'
+  ```
+  **Expect:** `False`, `True`, nothing, `False`. The `cmdkey` lines show only `postern-dev:…` entries: every
+  `postern:` credential has gone with the install, and the dev profile's are untouched. Postern (Dev) keeps running.
+  Result:
+
+---
+
 ## Decisions
 
 | Question | Decision | Where |
@@ -570,6 +709,11 @@ reach as gh) first if you haven't. `gh auth status` must show you logged in.
 | Is an unsigned app acceptable to approve? | **Allowed**, with the amber warning. Developer machines run plenty of unsigned local builds. Identity is the exe path | `ApprovalWindow`, `CallerInfo.Matches` |
 | CLI registrations all share one exe (A5.7) | **One `postern-cli` exe.** Registrations are told apart by `--name`. Requests queue (up to 10 per exe, one per name) and are shown in arrival order | `postern-cli`, `Registrations`, `ApprovalWindow` |
 | Should a request start Postern if it isn't running? | **No.** Postern would inherit the app's environment, elevation and lifetime. Start at login keeps it running; clients can wait for it (`WaitUntilAvailableAsync`, `postern-cli --wait`), and the not-running message says how to start it | `PosternClient`, `postern-cli` |
+| Public repo? | **Yes.** Installs and update checks go to GitHub anonymously | `install.ps1`, `Updater` |
+| Uninstall and credentials | **Uninstall deletes every `postern:*` credential.** The data folder stays | `Updater.CleanUpBeforeUninstall` |
+| Dev builds next to an install | **Separate profile:** Debug builds are Postern (Dev), with their own pipe, data, credentials and login entry. `POSTERN_DEV` overrides | `Profile` |
+| Carry dev data into the install? | **No.** The install starts fresh | |
+| One-liner installer? | **Yes**, `irm …/install.ps1 \| iex`, verifying Setup against `SHA256SUMS.txt` and refusing an elevated shell | `install.ps1`, `tools/test-install.ps1` |
 | Should Postern itself run elevated? | **No.** A UAC-elevated start shows a warning and exits with 5. UAC-off machines aren't refused (there's no other token to use) | `Elevation` |
 | Graph via WAM (S5) | **Deferred.** Internal approval for an Entra app registration will take time | `docs/spike-plan.md` S5 |
 | Merge order | **No merging during greenfield work.** Postern keeps building on `poc/walking-skeleton`; Perch stays on `spike/postern-transport` | |

@@ -56,7 +56,7 @@ public sealed class BrokerRuntime : IAsyncDisposable
         Providers = options.Providers;
         foreach (var provider in Providers)
             provider.Validate();
-        Credentials = overrides.Credentials ?? new WindowsCredentialStore();
+        Credentials = overrides.Credentials ?? Profile.CredentialStore();
         RateLimits = new RateLimits(Time);
 
         PosternDatabase? database = null;

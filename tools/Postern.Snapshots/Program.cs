@@ -35,6 +35,12 @@ await session.Dispatch(() =>
         Request(previous: null, signed: false, name: "api-jobs", exe: @"C:\Code\example-stack\api\bin\Debug\api.exe"),
         Request(previous: null, signed: false, name: "worker", exe: @"C:\Code\example-stack\worker\bin\Debug\worker.exe")), "approval-queue");
 
+    var updater = new Postern.App.Services.Updater();
+    Save(Updates(updater, w => w.ShowAvailable("0.3.0", null)), "update-available");
+    Save(Updates(updater, w => w.ShowUpToDate()), "update-up-to-date");
+    Save(Updates(updater, w => w.ShowNotInstalled()), "update-not-installed");
+    Save(Updates(updater, w => w.ShowDownloading("0.3.0", 42)), "update-downloading");
+
     var broker = Broker();
     Save(new AppsWindow(broker), "apps");
     Save(new CredentialsWindow(broker), "credentials");
@@ -54,6 +60,13 @@ void Save(Window window, string name)
     frame.Save(path);
     Console.WriteLine(path);
     window.Close();
+}
+
+static UpdateWindow Updates(Postern.App.Services.Updater updater, Action<UpdateWindow> state)
+{
+    var window = new UpdateWindow(updater, () => { }, checkOnOpen: false);
+    state(window);
+    return window;
 }
 
 static ApprovalWindow Approval(params ApprovalRequest[] requests)
