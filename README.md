@@ -19,8 +19,9 @@ what you approved for that app, adds the credential, and forwards it. The app ne
 | `src/Postern.Cli` | `postern-cli`: register/call/status from scripts, and `credential set` |
 | `tests/Postern.Tests` | Unit tests plus end-to-end tests through a real pipe to a fake upstream |
 | `scripts/smoke.ps1` | The real exes end to end, including crash -> supervisor restart -> client retry |
+| `scripts/shadow-stack.ps1` | Starts several `postern-shadow` apps at once against your Postern (approval queue, then gh vs Postern comparisons) |
 | `spikes/` | Throwaway proofs: `pipe-broker` (S1/S2), `consumers` (Octokit, Node, poller, Perch E2E) |
-| `tools/` | `fake-upstream` (GitHub-shaped stand-in), `postern-snapshots` (offscreen UI renders to `captures/`) |
+| `tools/` | `fake-upstream` (GitHub-shaped stand-in), `postern-snapshots` (offscreen UI renders to `captures/`), `postern-shadow` (asks gh and Postern the same questions and logs whether they agree) |
 
 ## Quick start (dev)
 

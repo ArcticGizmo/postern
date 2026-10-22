@@ -11,7 +11,9 @@ Branches: **postern** `poc/walking-skeleton`; **perch** `spike/postern-transport
 
 - **Session A** (~45 min): the core loop at your desk.
 - **Session B** (~15 min): lifecycle and accounts. Includes a sign-out.
-- **Session C** (a few days): Perch in shadow mode, then the cutover.
+- **Session C** (a few days): Perch in shadow mode, then the cutover. **Parked**: Session D comes first.
+- **Session D** (~20 min, then a day or two in the background): the approval queue, the elevation guard, and a
+  stack of small shadow apps comparing gh with Postern.
 
 ---
 
@@ -215,13 +217,13 @@ Branches: **postern** `poc/walking-skeleton`; **perch** `spike/postern-transport
   Result:
 
 - [ ] **A5.6** Run `& $cli register --name timeout-test --scope "GET github/user"` and don't touch the window.
-  **Expect:** after 2 minutes the window closes itself and the terminal says Denied. Do A5.7 while you wait.
+  **Expect:** after 5 minutes the window closes itself and the terminal says Denied. Do A5.7 while you wait.
   Result:
 
 - [ ] **A5.7** While A5.6's window is still open, run this in a **second** terminal (set `$cli` there first; see A0.7):
   `& $cli register --name second --scope "GET github/user"`
-  **Expect:** an immediate `registration-pending`. Only one registration per exe can wait at a time, and every
-  CLI registration is the same exe.
+  **Expect:** the same Postern window now shows "(1 of 2)" with `second` queued under `timeout-test`. A program
+  can have up to 10 requests waiting, one per name. Asking again under the same name replaces that name's request.
   Result:
 
 ### A6. A prompt while you're busy
@@ -448,12 +450,126 @@ Shadow mode compares answers, so Postern's PAT needs the same reach as your gh l
 
 ---
 
-## Decisions waiting on you
+## Session D: queue, elevation guard, shadow stack
 
-| Question | Current behaviour | Where |
+### D0. Build
+
+- [ ] **D0.1** Tray → Quit Postern (the running copy locks its `bin` folder). Then:
+  ```powershell
+  cd C:\Users\JonHowell\Documents\git\personal\postern
+  dotnet build postern.slnx; dotnet test postern.slnx
+  & $postern
+  ```
+  **Expect:** the build succeeds, 100 tests pass, and the tray icon is back.
+  Result:
+
+### D1. Elevation guard
+
+- [ ] **D1.1** In an **admin** PowerShell (set `$postern` there first; see A0.7):
+  ```powershell
+  (Start-Process $postern -Wait -PassThru).ExitCode
+  ```
+  **Expect:** a "Postern was started as administrator" warning box. After you click OK, it prints `5`. Your normal
+  Postern keeps running.
+  Result:
+
+- [ ] **D1.2** Still in the admin PowerShell: `& $postern --headless`
+  **Expect:** the same message in the terminal, and no message box.
+  Result:
+
+- [ ] **D1.3** Still in the admin PowerShell: `& $cli status`
+  **Expect:** it works. Elevated *callers* are still allowed; only Postern itself refuses to run elevated.
+  Result:
+
+### D2. The approval queue
+
+- [ ] **D2.1** Ask three times at once. All three print into this terminal. (`Start-Process` doesn't quote
+  arguments that contain spaces, hence the extra `"` around the scope.)
+  ```powershell
+  1..3 | % { Start-Process $cli -ArgumentList 'register', '--name', "queue-$_", '--scope', '"GET github/user"' -NoNewWindow }
+  ```
+  **Expect:** three "Asking Postern to approve 'queue-N'" blocks here, and a single Postern window titled
+  "(1 of 3)", with `queue-1`, `queue-2` and `queue-3` listed in arrival order and `queue-1` shown. Allow counts down
+  from 2. Deny all is on the left. If the terminal shows `bad-scope`, the quoting was lost.
+  Result:
+
+- [ ] **D2.2** Allow `queue-1`.
+  **Expect:** `queue-2` slides in, and Allow is disabled again for 2 seconds. Double-clicking Allow can't approve
+  `queue-2` by accident.
+  Result:
+
+- [ ] **D2.3** Deny `queue-2`. Then close the window with **X** while `queue-3` is showing.
+  **Expect:** the window closes, and the terminal shows `queue-2` and `queue-3` Denied. Check with:
+  `1..3 | % { & $cli status --name "queue-$_" | Select-Object -Index 1 }`. Only `queue-1` is approved.
+  Result:
+
+- [ ] **D2.4** Asking again replaces a waiting request. In one terminal:
+  `& $cli register --name queue-r --scope "GET github/user"`. Don't answer; run the same line in a second terminal.
+  **Expect:** the first terminal prints `Denied: registration-denied: Registration superseded.` straight away, and
+  the window shows the second request on its own. Deny it.
+  Result:
+
+- [ ] **D2.5** Postern not running. Tray → Quit Postern, then:
+  `& $cli register --name queue-w --scope "GET github/user"`
+  **Expect:** it fails at once (exit 3) with "nothing is listening… Start Postern.exe, and turn on Start at
+  login…", plus a hint about `--wait`. No window, and nothing is queued.
+  Result:
+
+- [ ] **D2.6** Waiting for Postern. With Postern still quit:
+  `& $cli register --name queue-w --scope "GET github/user" --wait 60`
+  It prints "waiting up to 60 s". Within the minute, start Postern from a **second** terminal (`& $postern`).
+  **Expect:** as soon as the tray icon appears, the prompt for `queue-w` opens and the first terminal moves on to
+  "Approve it in the Postern window...". Deny it.
+  Result:
+
+- [ ] **D2.7** Clean up: in Apps, revoke `queue-1`. Then
+  `"queue-1","queue-2","queue-3","queue-r","queue-w" | % { & $cli forget --name $_ }`.
+
+### D3. Shadow stack
+
+The shadow apps compare what gh sees with what Postern's PAT sees, so do C0.1 and C0.2 (a PAT with the same
+reach as gh) first if you haven't. `gh auth status` must show you logged in.
+
+- [ ] **D3.1** Start the stack. Pass one or two repos you work in to add the pulls and runs probes:
+  ```powershell
+  .\scripts\shadow-stack.ps1 -Repo <owner>/<repo>
+  ```
+  **Expect:** four minimised `postern-shadow` windows, and four requests queued in one Postern window:
+  `shadow-web`, `shadow-api`, `shadow-api-jobs` and `shadow-worker`. `shadow-api` and `shadow-api-jobs` show the
+  **same** Program path (one exe, two names); the others have their own folders under `out\shadow\`. Approve all four.
+  Result:
+
+- [ ] **D3.2** After about 3 minutes: `.\scripts\shadow-stack.ps1 -Summary`
+  **Expect:** each app has `same` lines and no `DIFFERENT`. The `user` probe logs a hash of your login, not the
+  login itself. A `DIFFERENT` on pulls or runs usually means the PAT can't see that repo, or lacks *Actions: Read*.
+  Result (same / DIFFERENT per app):
+
+- [ ] **D3.3** In Apps, revoke `shadow-web`. Wait a minute, then run `-Summary` again.
+  **Expect:** `shadow-web` shows `postern refused: app-revoked` as DIFFERENT, and doesn't prompt again. The other
+  apps carry on with `same`.
+  Result:
+
+- [ ] **D3.4** Tray → Quit Postern. Wait a minute, start it again (`& $postern`), and wait another minute.
+  **Expect:** one round of `postern unavailable` in each log, then back to `same` with no new prompts.
+  Result:
+
+- [ ] **D3.5** Leave it running for a day or two, then run `-Summary`.
+  Result (same / DIFFERENT per app):
+
+- [ ] **D3.6** Send any `DIFFERENT` lines, with repo names redacted. Then stop the stack:
+  `.\scripts\shadow-stack.ps1 -Stop`, and revoke the `shadow-*` apps in Apps.
+  Result:
+
+---
+
+## Decisions
+
+| Question | Decision | Where |
 |---|---|---|
-| Allow elevated callers? (B6) | Yes: the pipe ACL is by user SID | `PipeServerFactory` |
-| Is an unsigned app acceptable to approve? | Allowed, with an amber warning; identity is the exe path | `ApprovalWindow`, `CallerInfo.Matches` |
-| CLI registrations all share one exe (A5.7) | They're told apart only by `--name`, and only one can be pending at a time | `postern-cli` |
-| Graph via WAM (S5) | Not started. Needs an Entra app registration with `Mail.Read`/`Calendars.Read` consent in the work tenant. Is that obtainable? | `docs/spike-plan.md` S5 |
-| Merge order | Postern branches are local only. Perch's branch is a spike: the env var should become a setting before it merges | |
+| Allow elevated callers? (B6) | **Allowed.** UAC isn't a security boundary between a user's own processes, so refusing elevated callers wouldn't stop anything that could just run unelevated. The pipe ACL stays by user SID | `PipeServerFactory` |
+| Is an unsigned app acceptable to approve? | **Allowed**, with the amber warning. Developer machines run plenty of unsigned local builds. Identity is the exe path | `ApprovalWindow`, `CallerInfo.Matches` |
+| CLI registrations all share one exe (A5.7) | **One `postern-cli` exe.** Registrations are told apart by `--name`. Requests queue (up to 10 per exe, one per name) and are shown in arrival order | `postern-cli`, `Registrations`, `ApprovalWindow` |
+| Should a request start Postern if it isn't running? | **No.** Postern would inherit the app's environment, elevation and lifetime. Start at login keeps it running; clients can wait for it (`WaitUntilAvailableAsync`, `postern-cli --wait`), and the not-running message says how to start it | `PosternClient`, `postern-cli` |
+| Should Postern itself run elevated? | **No.** A UAC-elevated start shows a warning and exits with 5. UAC-off machines aren't refused (there's no other token to use) | `Elevation` |
+| Graph via WAM (S5) | **Deferred.** Internal approval for an Entra app registration will take time | `docs/spike-plan.md` S5 |
+| Merge order | **No merging during greenfield work.** Postern keeps building on `poc/walking-skeleton`; Perch stays on `spike/postern-transport` | |

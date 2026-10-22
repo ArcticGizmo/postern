@@ -9,27 +9,41 @@ using Postern.Core.Apps;
 
 namespace Postern.App.Views;
 
+/// <summary>One request in the approval queue, and the answer the broker is waiting on.</summary>
+internal sealed class PendingApproval(ApprovalRequest request)
+{
+    public ApprovalRequest Request { get; } = request;
+    public DateTimeOffset ArrivedAt { get; } = DateTimeOffset.Now;
+    public TaskCompletionSource<bool> Answer { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+}
+
 /// <summary>
 /// "Allow this app?" The security decision of the whole product, so it's deliberately slow to say yes:
 /// <list type="bullet">
-/// <item>Allow is disabled for the first 2 seconds, so a stray Enter or click aimed at another window can't approve.</item>
-/// <item>Deny is the default and Escape; closing the window is Deny; the broker's timeout is Deny.</item>
+/// <item>Allow is disabled for the first 2 seconds of every request, so a stray Enter or click aimed at another window
+/// can't approve, and a double-click on one request can't approve the next one as it slides into place.</item>
+/// <item>Deny is the default and Escape; closing the window denies everything in it; the broker's timeout is Deny.</item>
 /// <item>Shows the exe path and publisher as Windows reports them, not anything the app says about itself (except its name).</item>
 /// </list>
+/// Requests queue in arrival order in this one window (a full stack starting up asks several at once), and there's
+/// no "Allow all": each one is read and approved on its own.
 /// If Windows won't let it take focus (foreground lock), it flashes in the taskbar instead.
 /// </summary>
 internal sealed class ApprovalWindow : Window
 {
     static readonly TimeSpan ArmDelay = TimeSpan.FromSeconds(2);
 
-    readonly TaskCompletionSource<bool> _answer;
+    readonly List<PendingApproval> _queue = [];
     readonly Button _allow;
+    readonly Button _denyAll;
+    readonly Border _current = new();
+    readonly StackPanel _waiting = new() { Spacing = 4 };
+    readonly Control _waitingSection;
     readonly DispatcherTimer _arm;
     DateTimeOffset _armsAt;
 
-    public ApprovalWindow(ApprovalRequest request, TaskCompletionSource<bool> answer)
+    public ApprovalWindow()
     {
-        _answer = answer;
         Title = "Postern: allow an app?";
         Width = 560;
         SizeToContent = SizeToContent.Height;
@@ -39,17 +53,153 @@ internal sealed class ApprovalWindow : Window
         Background = Ui.Background;
         Icon = TrayArt.WindowIcon(attention: true);
 
-        _allow = Ui.Button("Allow", () => Finish(true), primary: true);
+        _allow = Ui.Button("Allow", () => Decide(true), primary: true);
         _allow.IsEnabled = false;
-        var deny = Ui.Button("Deny", () => Finish(false));
+        var deny = Ui.Button("Deny", () => Decide(false));
         deny.IsDefault = true;
         deny.IsCancel = true;
+        _denyAll = Ui.Button("Deny all", DenyAll);
+        DockPanel.SetDock(_denyAll, Dock.Left);
 
+        _waitingSection = new StackPanel
+        {
+            Spacing = 6,
+            Children =
+            {
+                new Separator { Background = Ui.Border, Margin = new Thickness(0, 4) },
+                new ScrollViewer { MaxHeight = 150, Content = _waiting },
+            },
+        };
+
+        Content = new StackPanel
+        {
+            Spacing = 14,
+            Margin = new Thickness(22, 20),
+            Children =
+            {
+                _current,
+                new DockPanel
+                {
+                    Children =
+                    {
+                        _denyAll,
+                        new StackPanel
+                        {
+                            Orientation = Orientation.Horizontal,
+                            HorizontalAlignment = HorizontalAlignment.Right,
+                            Spacing = 10,
+                            Children = { deny, _allow },
+                        },
+                    },
+                },
+                _waitingSection,
+            },
+        };
+
+        _arm = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
+        _arm.Tick += (_, _) => Arm();
+        Closing += (_, _) => IsDone = true;
+        Closed += (_, _) =>
+        {
+            _arm.Stop();
+            foreach (var item in _queue)
+                item.Answer.TrySetResult(false);
+            _queue.Clear();
+        };
+    }
+
+    /// <summary>Closing or closed: new requests need a new window.</summary>
+    public bool IsDone { get; private set; }
+
+    public void Enqueue(PendingApproval item)
+    {
+        _queue.Add(item);
+        if (_queue.Count == 1)
+            ShowCurrent();
+        else
+            RefreshQueue();
+        if (IsVisible)
+            FlashUnlessForeground();
+    }
+
+    /// <summary>The broker stopped waiting for this one (timeout, or the app asked again).</summary>
+    public void Withdraw(PendingApproval item)
+    {
+        var index = _queue.IndexOf(item);
+        if (index < 0)
+            return;
+        _queue.RemoveAt(index);
+        item.Answer.TrySetResult(false);
+        if (index == 0)
+            Advance();
+        else
+            RefreshQueue();
+    }
+
+    void Decide(bool allowed)
+    {
+        if (_queue.Count == 0 || (allowed && !_allow.IsEnabled))
+            return;
+        var item = _queue[0];
+        _queue.RemoveAt(0);
+        item.Answer.TrySetResult(allowed);
+        Advance();
+    }
+
+    void DenyAll()
+    {
+        foreach (var item in _queue)
+            item.Answer.TrySetResult(false);
+        _queue.Clear();
+        Advance();
+    }
+
+    void Advance()
+    {
+        if (_queue.Count == 0)
+        {
+            IsDone = true;
+            Close();
+            return;
+        }
+        ShowCurrent();
+    }
+
+    void ShowCurrent()
+    {
+        _current.Child = Describe(_queue[0].Request);
+        _armsAt = DateTimeOffset.UtcNow + ArmDelay;
+        _allow.IsEnabled = false;
+        Arm();
+        _arm.Start();
+        RefreshQueue();
+    }
+
+    void RefreshQueue()
+    {
+        Title = _queue.Count > 1 ? $"Postern: allow an app? (1 of {_queue.Count})" : "Postern: allow an app?";
+        _denyAll.IsVisible = _queue.Count > 1;
+        _waitingSection.IsVisible = _queue.Count > 1;
+        _waiting.Children.Clear();
+        if (_queue.Count <= 1)
+            return;
+
+        _waiting.Children.Add(Ui.Text($"{_queue.Count} requests, in the order they arrived", Ui.Muted, 11.5));
+        for (var i = 0; i < _queue.Count; i++)
+        {
+            var item = _queue[i];
+            var line = $"{(i == 0 ? "▶" : " ")} {i + 1,2}. {item.ArrivedAt:HH:mm:ss}  {item.Request.Name}  ({Path.GetFileName(item.Request.ExePath)}, pid {item.Request.ProcessId})";
+            _waiting.Children.Add(Ui.Code(line, i == 0 ? Ui.Foreground : Ui.Muted));
+        }
+    }
+
+    static Control Describe(ApprovalRequest request)
+    {
         var signed = request.SignatureTrusted
             ? Ui.Text(request.Signer ?? "Signed", Ui.Ok)
             : Ui.Text("Unsigned. Windows can't vouch for who made this program; check the path is one you expect.", Ui.Warning);
 
-        var body = new StackPanel { Spacing = 14, Margin = new Thickness(22, 20) };
+        var body = new StackPanel { Spacing = 14 };
         body.Children.Add(Ui.Heading($"“{request.Name}” wants to call services through Postern"));
         if (request.PreviousScopes is not null)
             body.Children.Add(Ui.Text("It already has access. Approving replaces that access (and its token) with the list below.", Ui.Warning));
@@ -66,18 +216,7 @@ internal sealed class ApprovalWindow : Window
         body.Children.Add(Ui.Field("It asks for", ScopeList(request)));
         body.Children.Add(Ui.Text("Postern adds your stored credential to each allowed request. The app never sees the secret. " +
                                   "You can revoke this at any time from the tray (Apps…).", Ui.Muted, 12));
-        body.Children.Add(new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Right,
-            Spacing = 10,
-            Children = { deny, _allow },
-        });
-        Content = body;
-
-        _arm = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
-        _arm.Tick += (_, _) => Arm();
-        Closed += (_, _) => Finish(false);
+        return body;
     }
 
     static Control ScopeList(ApprovalRequest request)
@@ -98,12 +237,8 @@ internal sealed class ApprovalWindow : Window
     protected override void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
-        _armsAt = DateTimeOffset.UtcNow + ArmDelay;
-        _arm.Start();
-        Arm();
         Activate();
-        if (TryGetPlatformHandle()?.Handle is { } hwnd && GetForegroundWindow() != hwnd)
-            Flash(hwnd);
+        FlashUnlessForeground();
     }
 
     protected override void OnKeyDown(KeyEventArgs e)
@@ -127,15 +262,10 @@ internal sealed class ApprovalWindow : Window
         _allow.IsEnabled = true;
     }
 
-    /// <summary>The broker gave up waiting.</summary>
-    public void TimeOut() => Finish(false);
-
-    void Finish(bool allowed)
+    void FlashUnlessForeground()
     {
-        if (!_answer.TrySetResult(allowed))
-            return;
-        _arm.Stop();
-        Close();
+        if (TryGetPlatformHandle()?.Handle is { } hwnd && GetForegroundWindow() != hwnd)
+            Flash(hwnd);
     }
 
     [DllImport("user32.dll")]

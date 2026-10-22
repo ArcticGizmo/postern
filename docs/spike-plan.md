@@ -8,13 +8,14 @@ style as Perch's `spikes/reserve-edge`. Nothing in a spike goes into `src/` with
 
 | Step | State |
 |---|---|
-| S1 pipe transport and identity | ✅ Proved locally (`spikes/pipe-broker`). Other-user and elevated checks queued in `test-batch.md` §8 |
+| S1 pipe transport and identity | ✅ Proved locally (`spikes/pipe-broker`). Elevated callers connect and are allowed by decision (`test-batch.md` B6). The other-user check is optional (B7) |
 | S2 forwarding | ✅ Proved against a fake upstream. Live GitHub and corporate TLS queued (§2, §7) |
 | S3 approval UX | ✅ Built in the tray app (arm delay, deny by default, scope diff). Foreground-lock behaviour queued (§4) |
 | S4 lifecycle | ✅ Run key + `--supervise` watchdog; crash→restart→client-retry proven by `scripts/smoke.ps1`. Sign-out/in queued (§6) |
-| S5 Graph via WAM | Not started. Blocked on whether an Entra app registration is obtainable |
+| S5 Graph via WAM | Deferred until internal approval for an Entra app registration comes through |
 | Phase 1 walking skeleton | ✅ `src/`: Core, Broker, Client, App, Cli; 96 tests; smoke script |
-| C1 Perch | Seam + shadow mode built on `..\perch-postern` (`spike/postern-transport`); E2E against a fake passes. Shadow week queued (§9) |
+| C1 Perch | Seam + shadow mode built on `..\perch-postern` (`spike/postern-transport`); E2E against a fake passes. **Parked** behind the shadow stack |
+| Shadow stack | `tools/Postern.Shadow` + `scripts/shadow-stack.ps1`: small stand-in apps comparing gh with Postern, started together to exercise the approval queue. Queued in `test-batch.md` Session D |
 | C2 Octokit, Node | ✅ Against the fake (`spikes/consumers`). Live queued (§7) |
 | C3 Pylon-shaped poller | ✅ Survives a Postern crash with 0 failures. Live 304 accounting queued (§7) |
 

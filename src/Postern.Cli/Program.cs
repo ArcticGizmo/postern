@@ -9,6 +9,7 @@ using Postern.Client;
 //   postern-cli call --name scripts POST github/graphql --data '{"query":"{ viewer { login } }"}'
 //   postern-cli status --name scripts
 //   postern-cli forget --name scripts
+//   postern-cli register --name scripts --scope "GET github/user" --wait 120   (Postern may still be starting)
 //
 // Every registration made through the CLI has the same exe (postern-cli.exe), so the name is what tells them apart
 // in the approval prompt. Tokens are stored per name, DPAPI-protected.
@@ -42,6 +43,9 @@ bool Flag(string name) => rest.Remove(name);
 
 var appName = Take("--name") ?? "cli";
 var pipe = Take("--pipe") ?? new PosternOptions { AppName = appName }.PipeName;
+var waitText = Take("--wait");
+if (waitText is not null && (!int.TryParse(waitText, out var waitSeconds) || waitSeconds < 0))
+    return Usage();
 using var postern = new PosternClient(new PosternOptions
 {
     AppName = appName,
@@ -51,6 +55,22 @@ using var postern = new PosternClient(new PosternOptions
 
 try
 {
+    if (command is "status" or "register" or "call" && !postern.IsAvailable)
+    {
+        if (waitText is null)
+        {
+            Console.Error.WriteLine($"postern: nothing is listening on \\\\.\\pipe\\{pipe}. {PosternClient.NotRunningHint}");
+            Console.Error.WriteLine("postern: or pass --wait SECONDS to wait for it to start.");
+            return ExitPostern;
+        }
+        Console.Error.WriteLine($"postern: waiting up to {waitText} s for Postern on \\\\.\\pipe\\{pipe}...");
+        if (!await postern.WaitUntilAvailableAsync(TimeSpan.FromSeconds(int.Parse(waitText))))
+        {
+            Console.Error.WriteLine($"postern: it didn't start. {PosternClient.NotRunningHint}");
+            return ExitPostern;
+        }
+    }
+
     switch (command)
     {
         case "status":
@@ -75,11 +95,6 @@ catch (PosternUnavailableException ex)
 
 async Task<int> Status()
 {
-    if (!postern.IsAvailable)
-    {
-        Console.Error.WriteLine($"postern: nothing is listening on \\\\.\\pipe\\{postern.Options.PipeName}. Is Postern running?");
-        return ExitPostern;
-    }
     var status = await postern.GetStatusAsync();
     Console.WriteLine($"Postern {status.Version} on \\\\.\\pipe\\{status.Pipe} (pid {status.ProcessId}), providers: {string.Join(", ", status.Providers)}");
     if (status.App is { } app)
@@ -177,6 +192,7 @@ static int Usage()
         postern-cli credential set|delete <provider> | credential list   [--data-dir DIR]
                     (secret from stdin or a hidden prompt; stored in Windows Credential Manager for Postern)
         Options: --pipe NAME (default %POSTERN_PIPE% or "postern"). --name defaults to "cli".
+                 --wait SECONDS: if Postern isn't running yet, wait for it (status, register, call).
         Exit: 0 ok, 1 provider returned an error, 2 usage, 3 Postern refused or isn't running.
         """);
     return ExitUsage;

@@ -40,7 +40,7 @@ public sealed class PosternHandler(PosternClient client, HttpMessageHandler inne
             }
             catch (HttpRequestException ex) when (IsConnectFailure(ex))
             {
-                throw new PosternUnavailableException($"Postern isn't answering on \\\\.\\pipe\\{client.Options.PipeName}.", ex);
+                throw new PosternUnavailableException($"Postern isn't answering on \\\\.\\pipe\\{client.Options.PipeName}. {PosternClient.NotRunningHint}", ex);
             }
         }
     }

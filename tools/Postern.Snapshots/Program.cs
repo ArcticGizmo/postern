@@ -26,9 +26,14 @@ Postern.App.Program.Args = AppArgs.Parse(["--data-dir", @"C:\Users\Example\AppDa
 using var session = HeadlessUnitTestSession.StartNew(typeof(SnapshotApp));
 await session.Dispatch(() =>
 {
-    Save(new ApprovalWindow(Request(previous: null, signed: false), new TaskCompletionSource<bool>()), "approval-new-unsigned");
-    Save(new ApprovalWindow(Request(previous: [Scope.Parse("GET github/repos/*/*/pulls/**"), Scope.Parse("GET github/user")], signed: true),
-        new TaskCompletionSource<bool>()), "approval-replacement-signed");
+    Save(Approval(Request(previous: null, signed: false)), "approval-new-unsigned");
+    Save(Approval(Request(previous: [Scope.Parse("GET github/repos/*/*/pulls/**"), Scope.Parse("GET github/user")], signed: true)),
+        "approval-replacement-signed");
+    Save(Approval(
+        Request(previous: null, signed: false, name: "web", exe: @"C:\Code\example-stack\web\bin\Debug\web.exe"),
+        Request(previous: null, signed: false, name: "api", exe: @"C:\Code\example-stack\api\bin\Debug\api.exe"),
+        Request(previous: null, signed: false, name: "api-jobs", exe: @"C:\Code\example-stack\api\bin\Debug\api.exe"),
+        Request(previous: null, signed: false, name: "worker", exe: @"C:\Code\example-stack\worker\bin\Debug\worker.exe")), "approval-queue");
 
     var broker = Broker();
     Save(new AppsWindow(broker), "apps");
@@ -51,11 +56,20 @@ void Save(Window window, string name)
     window.Close();
 }
 
-static ApprovalRequest Request(IReadOnlyList<Scope>? previous, bool signed) => new(
-    "a1b2c3",
-    "perch",
-    @"C:\Users\Example\AppData\Local\Perch\current\Perch.exe",
-    4242,
+static ApprovalWindow Approval(params ApprovalRequest[] requests)
+{
+    var window = new ApprovalWindow();
+    foreach (var request in requests)
+        window.Enqueue(new PendingApproval(request));
+    return window;
+}
+
+static ApprovalRequest Request(IReadOnlyList<Scope>? previous, bool signed, string name = "perch",
+    string exe = @"C:\Users\Example\AppData\Local\Perch\current\Perch.exe") => new(
+    "a1b2c3-" + name,
+    name,
+    exe,
+    (uint)(4242 + name.Length),
     signed,
     signed ? "CN=Example Publisher Ltd, O=Example Publisher Ltd, C=GB" : null,
     [Scope.Parse("GET github/repos/*/*/pulls/**"), Scope.Parse("POST github/graphql"), Scope.Parse("GET github/notifications")],

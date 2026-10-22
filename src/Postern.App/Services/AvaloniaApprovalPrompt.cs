@@ -4,32 +4,50 @@ using Postern.Core.Apps;
 
 namespace Postern.App.Services;
 
-/// <summary>Shows an <see cref="ApprovalWindow"/> per request, on the UI thread. Cancellation (the broker's timeout) closes it as a deny.</summary>
+/// <summary>
+/// Queues requests into one <see cref="ApprovalWindow"/>, on the UI thread, opening it when the first arrives.
+/// Cancellation (the broker's timeout, or the app asking again) takes the request out of the queue as a deny.
+/// </summary>
 internal sealed class AvaloniaApprovalPrompt : IApprovalPrompt
 {
+    ApprovalWindow? _window;
     int _pending;
 
-    /// <summary>Raised on the UI thread when the number of open prompts changes.</summary>
+    /// <summary>Raised on the UI thread when the number of waiting requests changes.</summary>
     public event Action<int>? PendingChanged;
 
     public async Task<bool> AskAsync(ApprovalRequest request, CancellationToken cancellationToken)
     {
-        var answer = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var item = new PendingApproval(request);
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
-            var window = new ApprovalWindow(request, answer);
-            cancellationToken.Register(() => Dispatcher.UIThread.Post(window.TimeOut));
+            var window = _window is { IsDone: false } open ? open : NewWindow();
+            window.Enqueue(item);
+            cancellationToken.Register(() => Dispatcher.UIThread.Post(() => window.Withdraw(item)));
             PendingChanged?.Invoke(++_pending);
-            window.Show();
+            if (!window.IsVisible)
+                window.Show();
         });
 
         try
         {
-            return await answer.Task;
+            return await item.Answer.Task;
         }
         finally
         {
             Dispatcher.UIThread.Post(() => PendingChanged?.Invoke(--_pending));
         }
+    }
+
+    ApprovalWindow NewWindow()
+    {
+        var window = new ApprovalWindow();
+        window.Closed += (_, _) =>
+        {
+            if (ReferenceEquals(_window, window))
+                _window = null;
+        };
+        _window = window;
+        return window;
     }
 }

@@ -13,6 +13,7 @@ internal static class Program
     public const int ExitBadArguments = 2;
     public const int ExitPipeInUse = 3;
     public const int ExitBrokerFailed = 4;
+    public const int ExitElevated = 5;
 
     /// <summary>Set before Avalonia starts; the App reads it.</summary>
     public static AppArgs Args { get; internal set; } = null!;
@@ -37,6 +38,16 @@ internal static class Program
         var console = (Args.Headless || Args.Supervise) && AttachParentConsole();
         Logs = new FileLoggerProvider(Path.Combine(Args.DataDirectory, "logs"), console);
         var log = Logs.CreateLogger("Postern.App");
+
+        if (Elevation.IsElevatedByUac())
+        {
+            log.LogError("Refusing to run elevated.");
+            if (console)
+                Console.Error.WriteLine(Elevation.Message);
+            else
+                Elevation.ShowRefusal();
+            return ExitElevated;
+        }
 
         if (Args.Supervise)
             return Supervisor.Run(Args, message => Logs.CreateLogger("Postern.Supervisor").LogInformation("{Message}", message));

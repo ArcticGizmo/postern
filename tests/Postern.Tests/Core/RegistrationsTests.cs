@@ -7,6 +7,7 @@ internal sealed class ManualPrompt : IApprovalPrompt
 {
     readonly Dictionary<string, TaskCompletionSource<bool>> _pending = [];
     readonly SemaphoreSlim _asked = new(0);
+    int _shown;
 
     public List<ApprovalRequest> Requests { get; } = [];
 
@@ -26,12 +27,17 @@ internal sealed class ManualPrompt : IApprovalPrompt
     public async Task<ApprovalRequest> NextAsync()
     {
         Assert.True(await _asked.WaitAsync(TimeSpan.FromSeconds(5)), "no approval prompt was shown");
-        lock (_pending) return Requests[^1];
+        lock (_pending) return Requests[_shown++];
     }
 
     public void Answer(string id, bool approve)
     {
         lock (_pending) _pending[id].TrySetResult(approve);
+    }
+
+    public bool WasWithdrawn(string id)
+    {
+        lock (_pending) return _pending[id].Task.IsCanceled;
     }
 }
 
@@ -112,13 +118,56 @@ public class RegistrationsTests
     }
 
     [Fact]
-    public async Task OnePendingRegistrationPerExe()
+    public async Task SeveralNamesFromOneExeQueueInArrivalOrder()
     {
         var registrations = Create();
-        registrations.Begin("perch", ["GET github/user"], Perch);
-        var ex = Assert.Throws<RegistrationException>(() => registrations.Begin("perch-2", ["GET github/user"], Perch));
+        var api = registrations.Begin("api", ["GET github/user"], Perch);
+        var worker = registrations.Begin("worker", ["GET github/user"], Perch);
+        Assert.Equal("api", (await _prompt.NextAsync()).Name);
+        Assert.Equal("worker", (await _prompt.NextAsync()).Name);
+
+        _prompt.Answer(worker.Id, true);
+        _prompt.Answer(api.Id, false);
+        Assert.Equal(ClaimStatus.Issued, (await registrations.ClaimAsync(worker.Id, worker.Claim, Perch, Wait, default)).Status);
+        Assert.Equal(ClaimStatus.Denied, (await registrations.ClaimAsync(api.Id, api.Claim, Perch, Wait, default)).Status);
+    }
+
+    [Fact]
+    public async Task PendingRegistrationsPerExeAreCapped()
+    {
+        var registrations = Create();
+        for (var i = 0; i < Registrations.MaxPendingPerExe; i++)
+        {
+            registrations.Begin($"app-{i}", ["GET github/user"], Perch);
+            await _prompt.NextAsync();
+        }
+        var ex = Assert.Throws<RegistrationException>(() => registrations.Begin("one-too-many", ["GET github/user"], Perch));
         Assert.Equal("registration-pending", ex.Code);
+
+        var other = new CallerInfo(200, @"C:\Apps\Other\Other.exe", false, null);
+        registrations.Begin("other", ["GET github/user"], other);
+        Assert.Equal("other", (await _prompt.NextAsync()).Name);
+    }
+
+    [Fact]
+    public async Task AskingAgainReplacesTheWaitingRequest()
+    {
+        var registrations = Create();
+        var first = registrations.Begin("perch", ["GET github/user"], Perch);
         await _prompt.NextAsync();
+        var waiting = registrations.ClaimAsync(first.Id, first.Claim, Perch, Wait, default);
+
+        var second = registrations.Begin("perch", ["GET github/user", "POST github/graphql"], Perch);
+        Assert.Equal(second.Id, (await _prompt.NextAsync()).RegistrationId);
+        Assert.True(_prompt.WasWithdrawn(first.Id));
+
+        var result = await waiting;
+        Assert.Equal(ClaimStatus.Denied, result.Status);
+        Assert.Equal(RegistrationStatus.Superseded, _store.Find(first.Id)!.Status);
+
+        _prompt.Answer(first.Id, true); // a late click on the withdrawn prompt changes nothing
+        Assert.Equal(RegistrationStatus.Superseded, _store.Find(first.Id)!.Status);
+        Assert.Equal(RegistrationStatus.Pending, _store.Find(second.Id)!.Status);
     }
 
     [Fact]

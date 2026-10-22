@@ -48,6 +48,7 @@ app's access means rotating a credential that every other app also uses.
 | An approved app doing more than it needs | Limited by the allowlist scopes |
 | A secret leaked by an app that logs or persists it | Mostly. Under the default proxy tier the app never holds the secret |
 | Revoking one app | Immediate, with no rotation, for proxy-tier access |
+| A same-user process replacing an approved app's exe | Signed apps: yes, the signer has to match. Unsigned apps: **no**, because identity is the path. This is the row below by another route |
 | Malware running as the same user | **No.** It can already read browser cookies and Credential Manager. Don't claim otherwise |
 
 **Fail closed:** if Postern can't authorise a request, the request fails. It never goes out unauthenticated or

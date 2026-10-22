@@ -20,10 +20,16 @@ public sealed record ClaimResult(ClaimStatus Status, string? Token, string Detai
 /// The registration lifecycle: an app asks (Begin), the user decides (via <see cref="IApprovalPrompt"/>, or the
 /// timeout denies), and the app claims its token once (Claim). Only the process that registered can claim, and the
 /// token is generated at claim time and never stored, only its hash.
+/// <para>
+/// Several registrations can wait at once (a full stack starting up), and the prompt shows them in arrival order.
+/// The timeout is long enough to work through that queue. An exe can only have <see cref="MaxPendingPerExe"/>
+/// waiting, so one misbehaving caller can't bury the user in prompts.
+/// </para>
 /// </summary>
 public sealed class Registrations
 {
-    public static readonly TimeSpan DefaultApprovalTimeout = TimeSpan.FromMinutes(2);
+    public static readonly TimeSpan DefaultApprovalTimeout = TimeSpan.FromMinutes(5);
+    public const int MaxPendingPerExe = 10;
     const int MaxScopes = 64;
 
     readonly IRegistrationStore _store;
@@ -31,6 +37,7 @@ public sealed class Registrations
     readonly TimeProvider _time;
     readonly TimeSpan _approvalTimeout;
     readonly ConcurrentDictionary<string, TaskCompletionSource> _decisions = new();
+    readonly ConcurrentDictionary<string, CancellationTokenSource> _asking = new();
     readonly Lock _gate = new();
 
     public Registrations(IRegistrationStore store, IApprovalPrompt prompt, TimeProvider? time = null, TimeSpan? approvalTimeout = null)
@@ -67,11 +74,18 @@ public sealed class Registrations
         var claim = Secrets.NewClaim();
         AppRegistration registration;
         AppRegistration? previous;
+        AppRegistration? replaced;
+        CancellationTokenSource asking;
         lock (_gate)
         {
             var all = _store.All();
-            if (all.Any(r => r.Status == RegistrationStatus.Pending && SameExe(r.ExePath, caller.ExePath)))
-                throw new RegistrationException(429, "registration-pending", "This app already has a registration waiting for approval.");
+            var waiting = all.Where(r => r.Status == RegistrationStatus.Pending && SameExe(r.ExePath, caller.ExePath)).ToList();
+            // The same app asking again (it restarted, or gave up waiting) replaces its request rather than queueing a second.
+            replaced = waiting.FirstOrDefault(r => SameApp(r, name, caller.ExePath));
+            if (replaced is null && waiting.Count >= MaxPendingPerExe)
+                throw new RegistrationException(429, "registration-pending", $"This program already has {waiting.Count} registrations waiting for approval.");
+            if (replaced is not null)
+                _store.Save(replaced with { Status = RegistrationStatus.Superseded, DecidedAt = _time.GetUtcNow() });
 
             previous = all.LastOrDefault(r => r.Status == RegistrationStatus.Approved && SameApp(r, name, caller.ExePath));
             registration = new AppRegistration
@@ -87,28 +101,54 @@ public sealed class Registrations
             };
             _store.Save(registration);
             _decisions[registration.Id] = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            asking = new CancellationTokenSource(_approvalTimeout, _time);
+            _asking[registration.Id] = asking;
         }
 
+        if (replaced is not null)
+            Withdraw(replaced.Id);
         Changed?.Invoke();
         var request = new ApprovalRequest(registration.Id, name, caller.ExePath, caller.ProcessId, caller.SignatureTrusted,
             caller.Signer, scopes, previous?.Scopes);
-        _ = AskAsync(request);
+        _ = AskAsync(request, asking);
         return new RegistrationTicket(registration.Id, claim);
     }
 
-    async Task AskAsync(ApprovalRequest request)
+    async Task AskAsync(ApprovalRequest request, CancellationTokenSource asking)
     {
         bool approved;
         try
         {
-            using var timeout = new CancellationTokenSource(_approvalTimeout, _time);
-            approved = await _prompt.AskAsync(request, timeout.Token);
+            approved = await _prompt.AskAsync(request, asking.Token);
         }
         catch
         {
             approved = false; // a prompt that fails is a no
         }
+        finally
+        {
+            _asking.TryRemove(request.RegistrationId, out _);
+            asking.Dispose();
+        }
         Decide(request.RegistrationId, approved);
+    }
+
+    /// <summary>Takes a no-longer-pending registration out of the prompt and wakes anyone waiting to claim it.</summary>
+    void Withdraw(string id)
+    {
+        if (_asking.TryGetValue(id, out var asking))
+        {
+            try
+            {
+                asking.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+                // its prompt already finished
+            }
+        }
+        if (_decisions.TryRemove(id, out var decided))
+            decided.TrySetResult();
     }
 
     /// <summary>Records the user's answer. Ignored unless the registration is still pending.</summary>

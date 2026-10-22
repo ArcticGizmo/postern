@@ -326,6 +326,33 @@ public class ProxyTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ClientCanWaitForPosternToStart()
+    {
+        using var client = _h.Client();
+        var restart = _h.RestartAsync(TimeSpan.FromSeconds(1.5));
+        var down = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(2);
+        while (client.IsAvailable && DateTimeOffset.UtcNow < down)
+            await Task.Delay(20);
+        Assert.False(client.IsAvailable);
+
+        Assert.True(await client.WaitUntilAvailableAsync(TimeSpan.FromSeconds(10)));
+        await restart;
+        Assert.Equal(_h.Pipe, (await client.GetStatusAsync()).Pipe);
+    }
+
+    [Fact]
+    public async Task WaitingForPosternGivesUpAtTheTimeout()
+    {
+        using var client = new PosternClient(new PosternOptions
+        {
+            AppName = "test-app",
+            PipeName = "postern-test-nobody-" + Guid.NewGuid().ToString("N")[..8],
+            TokenStore = new InMemoryTokenStore(),
+        });
+        Assert.False(await client.WaitUntilAvailableAsync(TimeSpan.FromMilliseconds(600)));
+    }
+
+    [Fact]
     public async Task ClientRefusesAnUnexpectedServer()
     {
         using var client = _h.Client(expectedServerExe: @"C:\Program Files\Postern\Postern.exe");

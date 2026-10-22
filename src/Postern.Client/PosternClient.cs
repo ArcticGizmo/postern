@@ -27,6 +27,13 @@ public sealed class PosternClient : IDisposable
 {
     public const string TokenHeader = "Postern-App-Token";
 
+    /// <summary>
+    /// What to tell the user when nothing is listening. Clients don't start Postern themselves: it would inherit the
+    /// app's environment, elevation and lifetime (and die with the app's process tree), so it's started by the user
+    /// or at login.
+    /// </summary>
+    public const string NotRunningHint = "Start Postern.exe, and turn on Start at login in its tray menu so it's up before your apps.";
+
     static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     readonly ITokenStore _tokens;
@@ -54,6 +61,22 @@ public sealed class PosternClient : IDisposable
     /// <summary>Windows, and something is listening on the pipe (it is verified on connect, not here).</summary>
     public bool IsAvailable => OperatingSystem.IsWindows() && PipeConnector.PipeExists(Options.PipeName);
 
+    /// <summary>
+    /// For apps that can start before Postern does (a stack launched at login, a script in a startup folder): waits
+    /// until the pipe exists. False if it still doesn't after <paramref name="timeout"/>.
+    /// </summary>
+    public async Task<bool> WaitUntilAvailableAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
+    {
+        var deadline = DateTimeOffset.UtcNow + timeout;
+        while (!IsAvailable)
+        {
+            if (DateTimeOffset.UtcNow >= deadline)
+                return false;
+            await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken);
+        }
+        return true;
+    }
+
     /// <summary>A handler for your own HttpClient (or an SDK's adapter). Requests must target http://postern/{provider}/...</summary>
     public HttpMessageHandler CreateHandler()
     {
@@ -72,7 +95,7 @@ public sealed class PosternClient : IDisposable
     /// </summary>
     public async Task<RegistrationResult> RegisterAsync(IEnumerable<string> scopes, TimeSpan? approvalTimeout = null, CancellationToken cancellationToken = default)
     {
-        var deadline = DateTimeOffset.UtcNow + (approvalTimeout ?? TimeSpan.FromMinutes(2.5));
+        var deadline = DateTimeOffset.UtcNow + (approvalTimeout ?? TimeSpan.FromMinutes(5.5));
         using var begin = await _control.Value.PostAsJsonAsync("register", new { name = Options.AppName, scopes = scopes.ToArray() }, Json, cancellationToken);
         if (await begin.GetPosternErrorAsync(cancellationToken) is { } beginError)
             return new(RegistrationOutcome.Denied, $"{beginError.Code}: {beginError.Detail}");
