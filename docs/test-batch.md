@@ -433,8 +433,15 @@ Shadow mode compares answers, so Postern's PAT needs the same reach as your gh l
   Result:
 
 - [ ] **C4.4** Start Postern again (`& $postern`).
-  **Expect:** Perch recovers on its next poll. It stays revoked from C4.2 (Perch reports "Postern refused"), so
-  restart Perch (Dev) to re-register, approve it, and check the strip fills again.
+  **Expect:** the strip changes from "Postern isn't running" back to "Postern refused: app-revoked" on Perch's
+  next poll. It's still revoked from C4.2.
+
+  A revoked app deliberately doesn't ask again on its own. To re-approve Perch:
+  1. Quit Perch (Dev).
+  2. `Remove-Item "$env:LOCALAPPDATA\Postern.Client\perch.token"`
+  3. Start Perch (Dev) again and approve the new prompt.
+
+  **Expect:** the strip fills again.
   Result:
 
 - [ ] **C4.5** Run `gh auth login` to restore gh.
