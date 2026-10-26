@@ -22,6 +22,7 @@ internal sealed class MainWindow : Window
     public const string AuditKey = "audit";
     public const string GeneralKey = "general";
     public const string UpdatesKey = "updates";
+    public const string HowKey = "how";
 
     const double NavWidth = 190;
 
@@ -30,6 +31,7 @@ internal sealed class MainWindow : Window
     readonly ConnectionsPage _connections;
     readonly AuditPage _audit;
     readonly UpdatesPage _updates;
+    readonly HowItWorksPage _how;
     readonly Panel _content = new();
     readonly Dictionary<string, Control> _pages = [];
     readonly List<(string Key, Button Item, TextBlock Badge)> _nav = [];
@@ -50,6 +52,7 @@ internal sealed class MainWindow : Window
         _connections = new ConnectionsPage(broker);
         _audit = new AuditPage(broker);
         _updates = new UpdatesPage(updater, shutDownForUpdate);
+        _how = new HowItWorksPage(broker);
 
         var nav = new StackPanel { Margin = new Thickness(0, 4, 0, 0) };
         AddPage(nav, AppsKey, "Apps", _apps);
@@ -57,6 +60,7 @@ internal sealed class MainWindow : Window
         AddPage(nav, AuditKey, "Audit log", _audit);
         AddPage(nav, GeneralKey, "General", new GeneralPage());
         AddPage(nav, UpdatesKey, "Updates", _updates);
+        AddPage(nav, HowKey, "How it works", _how);
 
         var rail = new Border
         {
@@ -94,8 +98,11 @@ internal sealed class MainWindow : Window
         NavigateTo(page);
     }
 
-    /// <summary>For snapshots, which put the page into each of its states by hand.</summary>
+    /// <summary>For snapshots, which put these pages into each of their states by hand.</summary>
     public UpdatesPage Updates => _updates;
+
+    /// <inheritdoc cref="Updates"/>
+    public HowItWorksPage How => _how;
 
     protected override void OnKeyDown(KeyEventArgs e)
     {
@@ -127,6 +134,7 @@ internal sealed class MainWindow : Window
             case AuditKey: _audit.Refresh(); break;
             case ConnectionsKey: _connections.Refresh(); break;
             case UpdatesKey: _updates.Shown(); break;
+            case HowKey: _how.Refresh(); break;
         }
     }
 

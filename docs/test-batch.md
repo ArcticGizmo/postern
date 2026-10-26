@@ -752,6 +752,13 @@ In Postern (Dev), started with `.\run.cmd`. `$cli` as in A0.7.
   **Expect:** no output: its credential went with it. `& $cli credential list` no longer lists it.
   Result:
 
+- [ ] **F8** **How it works**, with `github` picked. Copy the Node example into `my-script.mjs`, change
+  `/repos/OWNER/REPO/pulls` (both places it appears, and the scope) to a repo you can see, and run `node my-script.mjs`.
+  **Expect:** an approval prompt for `my-script` whose **Through** line says `github  GitHub · api.github.com`, then
+  `200` and the start of a JSON array. Pick `jira` (or any other connection): the diagram, wire, addresses and code
+  all switch to it, and the page below the picker keeps its layout.
+  Result:
+
 ---
 
 ## Decisions

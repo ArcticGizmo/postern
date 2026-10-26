@@ -48,6 +48,16 @@ await session.Dispatch(() =>
     Save(new ConfirmDialog("Remove octopus?", "Its credential is deleted too. Apps with scopes on octopus keep their approval, " +
         "but their requests fail until a connection with that name exists again.", "Remove"), "connections-remove");
     Save(Shell(broker, updater, MainWindow.AuditKey), "audit");
+    Save(Shell(broker, updater, MainWindow.HowKey), "how-github");
+    Save(Shell(broker, updater, MainWindow.HowKey, howFor: "jira"), "how-jira");
+    Save(Shell(broker, updater, MainWindow.HowKey, howFor: "datadog"), "how-datadog");
+    foreach (var connection in broker.Connections.All)
+        foreach (var (title, code) in HowItWorksPage.CodeFor(connection, Postern.App.Program.Args.PipeName))
+        {
+            var extension = title switch { "Node" => "mjs", "PowerShell" => "ps1", _ => "cs" };
+            var path = Path.Combine(output, $"{stamp}-example-{connection.Name}-{title.Replace(".", "").ToLowerInvariant()}.{extension}");
+            File.WriteAllText(path, code);
+        }
     Save(Shell(broker, updater, MainWindow.GeneralKey), "general");
     Save(Shell(broker, updater, MainWindow.UpdatesKey, p => p.ShowAvailable("0.3.0", null)), "update-available");
     Save(Shell(broker, updater, MainWindow.UpdatesKey, p => p.ShowUpToDate()), "update-up-to-date");
@@ -70,10 +80,15 @@ void Save(Window window, string name)
     window.Close();
 }
 
-static MainWindow Shell(BrokerRuntime broker, Postern.App.Services.Updater updater, string page, Action<UpdatesPage>? updates = null)
+static MainWindow Shell(BrokerRuntime broker, Postern.App.Services.Updater updater, string page, Action<UpdatesPage>? updates = null,
+    string? howFor = null)
 {
     var window = new MainWindow(broker, updater, () => { }, page);
     updates?.Invoke(window.Updates);
+    if (howFor is not null)
+        window.How.Select(howFor);
+    if (page == MainWindow.HowKey)
+        window.Height = 1900; // the whole page in one frame, not just what fits on screen
     return window;
 }
 

@@ -9,6 +9,8 @@ scope                    GET github-work/repos/acme/*/pulls
 
 Manage them in Postern → **Connections**: add one from a template, set or replace its credential, remove it, or edit the lot as JSON. Changes apply on the next request; there's no restart.
 
+Postern → **How it works** draws a request's path for any connection you pick. It shows what goes over the pipe and what goes to the service, and maps each connection's real URL to its Postern address. It also has copyable client code for that connection (Node, .NET, Octokit.NET for GitHub, PowerShell) with your pipe and connection names already filled in. A client needs two changes: its base URL becomes `http://postern/<connection>/`, and it connects to the named pipe instead of a TCP port.
+
 ## Several accounts for one service
 
 Add a second connection from the same template, under another name (`github` and `github-work`, `jira` and `jira-client`). Each has its own credential, and an app asks for scopes on whichever it should use. One app can use both. The approval prompt lists each connection an app asks for, with the service and host it points at, so "github-work" is never just a name the app chose.
