@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Rasterises the single source-of-truth logo (postern.svg) into every PNG/ICO asset the app and README need. Run
+       with tools/gen-icons.ps1. Kept out of postern.slnx on purpose: only the generated assets are committed, so
+       nothing in the shipping app depends on the SVG renderer. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>postern-icongen</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Svg" Version="3.4.7" />
+  </ItemGroup>
+
+</Project>

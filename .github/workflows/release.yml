@@ -57,7 +57,7 @@ jobs:
 
       # Start menu only: a tray broker has no business on the desktop.
       - name: Pack with Velopack
-        run: dotnet vpk pack --packId Postern --packTitle "Postern" --packVersion ${{ steps.version.outputs.VERSION }} --packDir publish/ --mainExe Postern.exe --shortcuts StartMenuRoot --outputDir releases/
+        run: dotnet vpk pack --packId Postern --packTitle "Postern" --packVersion ${{ steps.version.outputs.VERSION }} --packDir publish/ --mainExe Postern.exe --shortcuts StartMenuRoot --icon src/Postern.App/Assets/postern.ico --outputDir releases/
 
       # Everything in releases/: Postern-win-Setup.exe, the portable .zip, and the update feed the in-app updater
       # reads (nupkg + RELEASES + releases.win.json).

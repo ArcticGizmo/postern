@@ -52,7 +52,7 @@ try {
 
     Step 'packing'
     # Start menu only: a tray broker has no business on the desktop.
-    dotnet vpk pack --packId Postern --packTitle Postern --packVersion $Version --packDir publish --mainExe Postern.exe --shortcuts StartMenuRoot --outputDir releases
+    dotnet vpk pack --packId Postern --packTitle Postern --packVersion $Version --packDir publish --mainExe Postern.exe --shortcuts StartMenuRoot --icon src\Postern.App\Assets\postern.ico --outputDir releases
     Check 'vpk pack'
 
     # Same format as the workflow's (sha256sum: lower-case hex, two spaces, LF), so `sha256sum -c` accepts it.

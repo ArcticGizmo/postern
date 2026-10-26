@@ -4,6 +4,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using Postern.App.Services;
 using Postern.Broker;
@@ -173,7 +174,7 @@ internal sealed class MainWindow : Window
         Margin = new Thickness(16, 18, 12, 14),
         Children =
         {
-            new Image { Source = TrayArt.Logo(), Width = 30, Height = 30 },
+            Logo(),
             new StackPanel
             {
                 VerticalAlignment = VerticalAlignment.Center,
@@ -185,6 +186,14 @@ internal sealed class MainWindow : Window
             },
         },
     };
+
+    static Image Logo()
+    {
+        var logo = new Image { Source = TrayArt.Logo(), Width = 30, Height = 30 };
+        // 256 px drawn at 30: the default interpolation drops pixels and leaves the edges jagged.
+        RenderOptions.SetBitmapInterpolationMode(logo, BitmapInterpolationMode.HighQuality);
+        return logo;
+    }
 
     void OnRegistrationsChanged() => Dispatcher.UIThread.Post(_apps.Refresh);
 
