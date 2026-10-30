@@ -1,0 +1,86 @@
+{
+  "group": "Shapes of data",
+  "scenarios": [
+    {
+      "id": "json-object",
+      "name": "JSON object",
+      "note": "The baseline: one GET, one JSON object. The credential is added on the way, and the app token is not passed on.",
+      "request": { "method": "GET", "connection": "github", "path": "user" },
+      "expect": {
+        "status": 200, "posternError": "none", "upstream": "reached",
+        "upstreamHeaders": { "Authorization": "Bearer san" },
+        "upstreamAbsent": [ "Postern-App-Token" ],
+        "headers": [ "Postern-Upstream-Ms", "Postern-RateLimit-Remaining" ]
+      }
+    },
+    {
+      "id": "paged-list",
+      "name": "Paged list",
+      "note": "A page of a list, with a Link header. Its URLs point at the upstream, so a client following them has to map them back onto Postern.",
+      "request": { "method": "GET", "connection": "github", "path": "repos/acme/api/pulls?per_page=5&page=2" },
+      "expect": { "status": 200, "headers": [ "Link" ], "jsonArrayLength": 5 }
+    },
+    {
+      "id": "graphql",
+      "name": "GraphQL",
+      "note": "One endpoint, a JSON body, and its own rate-limit bucket.",
+      "request": {
+        "method": "POST", "connection": "github", "path": "graphql",
+        "json": { "query": "{ viewer { login } rateLimit { remaining cost } }" }
+      },
+      "expect": {
+        "status": 200, "upstreamBodyMatches": true,
+        "headerEquals": { "Postern-RateLimit-Resource": "graphql" }
+      }
+    },
+    {
+      "id": "form-post",
+      "name": "Form post",
+      "note": "Slack's Web API takes form-encoded bodies. The body has to arrive byte for byte.",
+      "request": {
+        "method": "POST", "connection": "slack", "path": "chat.postMessage",
+        "form": { "channel": "C0SANDBOX", "text": "Sortie #42 ✓" }
+      },
+      "expect": { "status": 200, "upstreamBodyMatches": true, "bodyContains": "\"ok\":true" }
+    },
+    {
+      "id": "multipart",
+      "name": "Multipart upload",
+      "note": "A file part and a text part, Basic auth built from two fields, and Jira's XSRF opt-out header.",
+      "request": {
+        "method": "POST", "connection": "jira", "path": "rest/api/3/issue/SBX-1/attachments",
+        "headers": { "X-Atlassian-Token": "no-check" },
+        "multipart": [ { "name": "file", "filename": "trace.bin", "bytes": 65536 }, { "name": "comment", "text": "from Sallyport" } ]
+      },
+      "expect": {
+        "status": 200, "upstreamBodyMatches": true, "bodyContains": "trace.bin",
+        "upstreamHeaders": { "Authorization": "Basic " }
+      }
+    },
+    {
+      "id": "binary",
+      "name": "Binary download",
+      "note": "About 2.4 MB of bytes, with Octopus's key in X-Octopus-ApiKey rather than Authorization.",
+      "request": { "method": "GET", "connection": "octopus", "path": "api/packages/pkg-1/raw" },
+      "expect": {
+        "status": 200, "bodyMatchesSha": true, "minBytes": 2000000,
+        "upstreamHeaders": { "X-Octopus-ApiKey": "sandbox-no" },
+        "upstreamAbsent": [ "Authorization" ]
+      }
+    },
+    {
+      "id": "unicode-large",
+      "name": "Unicode and large",
+      "note": "Emoji, right-to-left text and characters outside the BMP, in a body big enough to stream.",
+      "request": { "method": "GET", "connection": "github", "path": "repos/acme/api/issues/7" },
+      "expect": { "status": 200, "bodyMatchesSha": true, "minBytes": 5000000 }
+    },
+    {
+      "id": "empty",
+      "name": "Empty",
+      "note": "No content and no content type.",
+      "request": { "method": "DELETE", "connection": "github", "path": "repos/acme/api/labels/stale" },
+      "expect": { "status": 204, "maxBytes": 0, "upstream": "reached" }
+    }
+  ]
+}

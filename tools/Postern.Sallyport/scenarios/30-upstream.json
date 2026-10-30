@@ -1,0 +1,42 @@
+{
+  "group": "Upstream misbehaving",
+  "scenarios": [
+    {
+      "id": "rate-limited",
+      "name": "Rate limited",
+      "note": "fake-upstream answers 429 once. The response comes back as it was, and Postern's rate-limit headers say none are left.",
+      "knob": { "service": "github", "fault": "429", "count": 1 },
+      "request": { "method": "GET", "connection": "github", "path": "user" },
+      "expect": {
+        "status": 429, "posternError": "none", "headers": [ "Retry-After" ],
+        "headerEquals": { "Postern-RateLimit-Remaining": "0" }
+      }
+    },
+    {
+      "id": "server-error",
+      "name": "Server error",
+      "note": "fake-upstream answers 500 once. The service failed, not Postern, and the response has to make that clear.",
+      "knob": { "service": "jira", "fault": "500", "count": 1 },
+      "request": { "method": "GET", "connection": "jira", "path": "rest/api/3/myself" },
+      "expect": { "status": 500, "posternError": "none" }
+    },
+    {
+      "id": "hang",
+      "name": "Hang",
+      "note": "fake-upstream holds one Octopus request for 20 s. Sallyport gives up after 4 s, and another app's request has to get through meanwhile.",
+      "flow": "hang",
+      "knob": { "service": "octopus", "fault": "hang", "seconds": 20, "count": 1 },
+      "request": { "method": "GET", "connection": "octopus", "path": "api/projects", "timeoutSeconds": 4 },
+      "meanwhile": { "method": "GET", "connection": "github", "path": "user" },
+      "expect": { "status": 200 }
+    },
+    {
+      "id": "dropped",
+      "name": "Dropped connection",
+      "note": "fake-upstream closes the connection without answering. Postern turns that into its own error rather than hanging or passing on garbage.",
+      "knob": { "service": "slack", "fault": "drop", "count": 1 },
+      "request": { "method": "POST", "connection": "slack", "path": "auth.test" },
+      "expect": { "status": 502, "posternError": "upstream-*" }
+    }
+  ]
+}

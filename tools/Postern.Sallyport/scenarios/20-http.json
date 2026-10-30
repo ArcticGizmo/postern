@@ -1,0 +1,33 @@
+{
+  "group": "HTTP behaviour",
+  "scenarios": [
+    {
+      "id": "conditional",
+      "name": "Conditional (304)",
+      "note": "Sent twice, the second time with the ETag. GitHub doesn't charge for a 304, and Postern's rate-limit numbers should agree.",
+      "flow": "conditional",
+      "request": { "method": "GET", "connection": "github", "path": "repos/acme/api/pulls?per_page=5" },
+      "expect": { "status": 304 }
+    },
+    {
+      "id": "redirect",
+      "name": "Redirect",
+      "note": "The archive redirects to another host. Postern hands the 302 back; following it would send the app token to the wrong place.",
+      "request": { "method": "GET", "connection": "github", "path": "repos/acme/api/tarball" },
+      "expect": { "status": 302, "headers": [ "Location" ], "upstream": "reached" }
+    },
+    {
+      "id": "streaming",
+      "name": "Streaming (SSE)",
+      "note": "fake-upstream writes four events a quarter of a second apart. If they all arrive together, something between buffered them.",
+      "request": {
+        "method": "POST", "connection": "anthropic", "path": "v1/messages",
+        "json": { "model": "sandbox", "stream": true, "max_tokens": 64, "messages": [ { "role": "user", "content": "ping" } ] }
+      },
+      "expect": {
+        "status": 200, "streamSpreadMs": 500,
+        "upstreamHeaders": { "x-api-key": "sandbox-no", "anthropic-version": "2023-06-01" }
+      }
+    }
+  ]
+}
