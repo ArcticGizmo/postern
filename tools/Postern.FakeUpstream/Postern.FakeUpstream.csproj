@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
-  <!-- A GitHub-shaped stand-in on loopback for smoke tests: echoes what Postern sent, does ETags, rate-limit headers. -->
+  <!-- Stand-ins on loopback for the services Postern (Sandbox) and the smoke tests talk to: GitHub, Jira, Slack,
+       Octopus and Anthropic shapes, fault knobs, and a record of what Postern sent. See Program.cs. -->
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <AssemblyName>fake-upstream</AssemblyName>
