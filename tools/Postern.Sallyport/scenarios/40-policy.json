@@ -1,0 +1,44 @@
+{
+  "group": "Postern saying no",
+  "scenarios": [
+    {
+      "id": "out-of-scope",
+      "name": "Out of scope",
+      "note": "Sallyport never asks to delete a repo. The proof is on the far side: fake-upstream never heard of it.",
+      "scope": "",
+      "request": { "method": "DELETE", "connection": "github", "path": "repos/acme/api" },
+      "expect": { "status": 403, "posternError": "scope-denied", "upstream": "untouched" }
+    },
+    {
+      "id": "encoded-slash",
+      "name": "Encoded slash",
+      "note": "An encoded slash mustn't let a path match a wider scope.",
+      "scope": "",
+      "request": { "method": "GET", "connection": "github", "path": "repos/a%2Fb/x/pulls" },
+      "expect": { "status": 400, "posternError": "bad-path", "upstream": "untouched" }
+    },
+    {
+      "id": "no-credential",
+      "name": "No credential",
+      "note": "The sandbox leaves jira-empty without a credential on purpose, so this always has something to hit.",
+      "request": { "method": "GET", "connection": "jira-empty", "path": "rest/api/3/myself" },
+      "expect": { "status": 503, "posternError": "credential-missing", "upstream": "untouched" }
+    },
+    {
+      "id": "no-token",
+      "name": "No token",
+      "note": "The same request with no Postern-App-Token, as an app that never registered would send it.",
+      "scope": "",
+      "request": { "method": "GET", "connection": "github", "path": "user", "omitToken": true },
+      "expect": { "status": 401, "posternError": "no-token", "upstream": "untouched" }
+    },
+    {
+      "id": "unknown-connection",
+      "name": "Unknown connection",
+      "note": "A connection Postern doesn't have.",
+      "scope": "",
+      "request": { "method": "GET", "connection": "nowhere", "path": "user" },
+      "expect": { "status": 404, "posternError": "unknown-provider", "upstream": "untouched" }
+    }
+  ]
+}

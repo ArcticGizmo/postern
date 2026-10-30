@@ -4,7 +4,10 @@
 #   src/Postern.App/Assets/postern.ico            multi-res ICO (.exe ApplicationIcon, vpk --icon, window + tray)
 #   src/Postern.App/Assets/postern-dev.ico        the same in Postern (Dev)'s pink
 #   src/Postern.App/Assets/postern-attention.ico  the same in amber, while an approval waits
-#   src/Postern.App/Assets/icon.png, icon-dev.png 256x256 PNG (in-app logo)
+#   src/Postern.App/Assets/postern-sandbox.ico    the same in Postern (Sandbox)'s sand
+#   src/Postern.App/Assets/icon.png, icon-dev.png, icon-sandbox.png
+#                                                 256x256 PNG (in-app logo)
+#   tools/Postern.Sallyport/Assets/sallyport.ico  the same in Sallyport's blue
 #   landing-icon.png                              512x512 PNG (README header)
 #
 # Run this after editing postern.svg, then commit the regenerated assets.

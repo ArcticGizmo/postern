@@ -65,8 +65,12 @@ await session.Dispatch(() =>
     Save(Shell(broker, updater, MainWindow.UpdatesKey, p => p.ShowNotInstalled()), "update-not-installed");
     Save(Shell(broker, updater, MainWindow.UpdatesKey, p => p.ShowDownloading("0.3.0", 42)), "update-downloading");
     Save(Shell(broker, updater, MainWindow.ChangelogKey), "changelog");
+    Save(Shell(broker, updater, MainWindow.TestbedKey), $"testbed-{Profile.Kind.ToString().ToLowerInvariant()}");
     var changelog = ChangelogMarkdown.LoadEmbedded() ?? throw new InvalidOperationException("CHANGELOG.md isn't embedded");
     Save(new WhatsNewWindow("0.0.0", ChangelogParser.UnseenSince(changelog, "0.0.0", "999.0.0"), () => { }), "whats-new");
+
+    Save(Sallyport("json-object"), "sallyport");
+    Save(Sallyport("streaming"), "sallyport-mismatch");
 }, CancellationToken.None);
 
 Console.WriteLine($"Wrote snapshots to {output}");
@@ -93,6 +97,45 @@ static MainWindow Shell(BrokerRuntime broker, Postern.App.Services.Updater updat
         window.How.Select(howFor);
     if (page == MainWindow.HowKey)
         window.Height = 1900; // the whole page in one frame, not just what fits on screen
+    return window;
+}
+
+// Every scenario passed apart from streaming, which is made to fail here to show how a mismatch reads. The soak
+// strip shows a crash drill: down, a retry, then back.
+static Window Sallyport(string select)
+{
+    var settings = new Postern.Sallyport.Settings("postern-sandbox", new Uri("http://127.0.0.1:5599/"), "sallyport", false, null);
+    var window = new Postern.Sallyport.MainWindow(settings, watch: false) { Height = 900 };
+    var results = window.LoadedScenarios.Select(s => s.Id switch
+    {
+        "json-object" => new Postern.Sallyport.RunResult(s,
+            "GET /github/user HTTP/1.1\nPostern-App-Token: (attached)\nX-Testbed-Id: 3f9c2a7d1b04",
+            "200 OK in 6 ms",
+            "Postern-RateLimit-Limit: 5000\nPostern-RateLimit-Remaining: 4987\nPostern-RateLimit-Resource: core\nPostern-Upstream-Ms: 3.1\n" +
+            "Content-Type: application/json; charset=utf-8\n\n{\"login\":\"fake\",\"id\":1001,\"type\":\"User\"}",
+            "GET /github/user\nAuthorization: Bearer san…\nHost: 127.0.0.1:5599\nUser-Agent: Postern/0.1.1\nX-Testbed-Id: 3f9c2a7d1b04\n\nno body",
+            [
+                new("status 200", true, "200 OK in 6 ms"), new("no Postern-Error (the answer is the service's)", true, "none"),
+                new("reached fake-upstream", true, "it saw 1 request(s)"), new("upstream got Authorization: Bearer san…", true, "Bearer san…"),
+                new("upstream didn't get Postern-App-Token", true), new("response has Postern-Upstream-Ms", true), new("response has Postern-RateLimit-Remaining", true),
+            ], TimeSpan.FromMilliseconds(9)),
+        "streaming" => new Postern.Sallyport.RunResult(s,
+            "POST /anthropic/v1/messages HTTP/1.1\nPostern-App-Token: (attached)\nContent-Type: application/json; charset=utf-8\n\n{\"model\":\"sandbox\",\"stream\":true}",
+            "200 OK in 4,102 ms",
+            "Content-Type: text/event-stream\n\nevent: message_start              +4,102 ms\nevent: content_block_delta        +4,102 ms\n" +
+            "event: content_block_delta        +4,103 ms\nevent: message_stop               +4,103 ms",
+            "POST /v1/messages\nanthropic-version: 2023-06-01\nx-api-key: sandbox-no…\n\nbody: 112 bytes, sha256 9b1e04c2d7aa…",
+            [new("status 200", true, "200 OK"), new("events arrived as sent (spread ≥ 500 ms)", false, "4 events over 1 ms; first after 4102 ms"),
+             new("upstream got x-api-key: sandbox-no…", true, "sandbox-no…")],
+            TimeSpan.FromMilliseconds(4110)),
+        _ => new Postern.Sallyport.RunResult(s, "", "ok", "", "", [new("as expected", true)], TimeSpan.FromMilliseconds(5)),
+    }).ToList();
+
+    var at = DateTimeOffset.Now.AddSeconds(-60);
+    var ticks = Enumerable.Range(0, 60).Select(i => new Postern.Sallyport.SoakTick(at.AddSeconds(i),
+        i is 41 or 42 ? Postern.Sallyport.SoakKind.Down : i == 43 ? Postern.Sallyport.SoakKind.Retried : Postern.Sallyport.SoakKind.Ok, "200", 5));
+    window.Preview(new Postern.Client.PosternStatus("0.1.1", "postern-sandbox", 41990, ["github", "jira"], null), results, ticks,
+        [("soak: GET github/user every second", false), ("crash: Killed pid 41872.", true), ("Postern is back as pid 41990 (was 41872)", false)], select);
     return window;
 }
 

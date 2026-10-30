@@ -25,6 +25,7 @@ internal sealed class MainWindow : Window
     public const string UpdatesKey = "updates";
     public const string ChangelogKey = "changelog";
     public const string HowKey = "how";
+    public const string TestbedKey = "testbed";
 
     const double NavWidth = 190;
 
@@ -34,11 +35,13 @@ internal sealed class MainWindow : Window
     readonly AuditPage _audit;
     readonly UpdatesPage _updates;
     readonly HowItWorksPage _how;
+    readonly TestbedPage? _testbed;
     readonly Panel _content = new();
     readonly Dictionary<string, Control> _pages = [];
     readonly List<(string Key, Button Item, TextBlock Badge)> _nav = [];
 
-    public MainWindow(BrokerRuntime broker, Updater updater, Action shutDownForUpdate, string page = AppsKey)
+    /// <param name="quit">Quit Postern (exit code 0, so a supervisor doesn't bring it back). The Testbed page uses it to reset the sandbox.</param>
+    public MainWindow(BrokerRuntime broker, Updater updater, Action shutDownForUpdate, string page = AppsKey, Action? quit = null)
     {
         _updater = updater;
         Title = $"Postern{Profile.DisplaySuffix}";
@@ -64,6 +67,12 @@ internal sealed class MainWindow : Window
         AddPage(nav, UpdatesKey, "Updates", _updates);
         AddPage(nav, ChangelogKey, "Changelog", new ChangelogPage());
         AddPage(nav, HowKey, "How it works", _how);
+        // Never in the installed Postern: the test bed starts processes and can wipe its own data.
+        if (Profile.Kind != ProfileKind.Live)
+        {
+            _testbed = new TestbedPage(broker, quit ?? (() => { }));
+            AddPage(nav, TestbedKey, "Testbed", _testbed);
+        }
 
         var rail = new Border
         {
@@ -138,6 +147,7 @@ internal sealed class MainWindow : Window
             case ConnectionsKey: _connections.Refresh(); break;
             case UpdatesKey: _updates.Shown(); break;
             case HowKey: _how.Refresh(); break;
+            case TestbedKey: _testbed?.Refresh(); break;
         }
     }
 
@@ -209,6 +219,7 @@ internal sealed class MainWindow : Window
     {
         SetBadge(ConnectionsKey, _connections.Missing > 0 ? "missing" : null, Ui.Warning);
         SetBadge(UpdatesKey, _updater.Available is null ? null : "new", Ui.Accent);
+        SetBadge(TestbedKey, Profile.IsSandbox ? "sandbox" : null, Ui.Brush("#C8B27A"));
     }
 
     void SetBadge(string key, string? text, IBrush colour)

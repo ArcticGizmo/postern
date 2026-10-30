@@ -108,6 +108,7 @@ Settings → Apps → Installed apps → Postern → Uninstall. It removes Poste
 - Releases, installing and updates: [`docs/releasing.md`](docs/releasing.md)
 - How it's being proved: [`docs/spike-plan.md`](docs/spike-plan.md) (status at the top)
 - What needs a human next: [`docs/test-batch.md`](docs/test-batch.md)
+- A safe Postern to test against, and Sallyport to test it with: [`docs/testbed.md`](docs/testbed.md)
 
 ## Development
 
@@ -124,7 +125,9 @@ $cli = ".\src\Postern.Cli\bin\Debug\net10.0-windows\postern-cli.exe"
 
 Debug builds run as a separate **Postern (Dev)**, with a pink icon, its own pipe (`postern-dev`), its own data and its own credentials, so they can run next to an installed copy. See [`docs/releasing.md`](docs/releasing.md).
 
-`Postern.exe` options: `--headless` (no tray; registrations are denied), `--supervise` (restart on crash), `--pipe NAME` (default `postern`, or `postern-dev` for a Debug build), `--data-dir DIR` (default `%LOCALAPPDATA%\Postern.Data`, or `Postern.Dev`), and in Debug builds only `--dev-auto-approve name1,name2` for unattended tests.
+`Postern.exe` options: `--headless` (no tray; registrations are denied), `--supervise` (restart on crash), `--sandbox` (run as Postern (Sandbox), below), `--reset-sandbox` (with `--sandbox`: start from a fresh sandbox), `--pipe NAME` (default `postern`, or `postern-dev` for a Debug build), `--data-dir DIR` (default `%LOCALAPPDATA%\Postern.Data`, or `Postern.Dev`), and in Debug builds only `--dev-auto-approve name1,name2` for unattended tests.
+
+**Postern (Sandbox)** is a third profile for testing against, in a sand-coloured icon: pipe `postern-sandbox`, data in `%LOCALAPPDATA%\Postern.Sandbox`, credentials under `postern-sandbox:`. It only sends requests to 127.0.0.1 or localhost (anything else is refused with `sandbox-host`), and it refuses credentials that look like real tokens. A new sandbox starts with connections for GitHub, Jira, Slack, Octopus and Anthropic, all pointing at a stand-in on `127.0.0.1:5599`, with made-up credentials. `POSTERN_SANDBOX=1` does the same as `--sandbox` for postern-cli and the other tools. See [`docs/testbed.md`](docs/testbed.md).
 
 To see the windows without launching the tray, `dotnet run --project tools\Postern.Snapshots` renders each one offscreen, with made-up data, to `captures/`.
 
@@ -134,7 +137,7 @@ To see the windows without launching the tray, `dotnet run --project tools\Poste
 |---|---|
 | `src/Postern.Core` | Policy: scopes, registrations, tokens, access decisions, audit and rate-limit models. No Windows/UI deps |
 | `src/Postern.Broker` | The request path: named-pipe Kestrel host, caller identity, YARP forwarding, Credential Manager, SQLite |
-| `src/Postern.App` | `Postern.exe`, the Avalonia tray app that hosts the broker (approval prompt; Apps, Connections, Audit log, General, Updates, Changelog and How it works pages; "What's new" after an update) |
+| `src/Postern.App` | `Postern.exe`, the Avalonia tray app that hosts the broker (approval prompt; Apps, Connections, Audit log, General, Updates, Changelog and How it works pages, and Testbed in Dev and Sandbox builds; "What's new" after an update) |
 | `src/Postern.Client` | The library apps reference: pipe handler with server verification, registration, DPAPI token |
 | `src/Postern.Cli` | `postern-cli`: register/call/status from scripts, and `credential set` |
 | `tests/Postern.Tests` | Unit tests plus end-to-end tests through a real pipe to a fake upstream |
@@ -143,8 +146,9 @@ To see the windows without launching the tray, `dotnet run --project tools\Poste
 | `scripts/publish.ps1` | A release built locally into `releases\`, the same way the release workflow does |
 | `.github/workflows` | `ci.yml` (build and test on pull requests), `release.yml` (a `v*` tag becomes a GitHub Release) |
 | `scripts/shadow-stack.ps1` | Starts several `postern-shadow` apps at once against your Postern (approval queue, then gh vs Postern comparisons) |
+| `testbed.cmd`, `scripts/testbed-run.ps1` | The test bed: Postern (Sandbox), fake-upstream and Sallyport, with a window or headless. See [`docs/testbed.md`](docs/testbed.md) |
 | `spikes/` | Throwaway proofs: `pipe-broker` (S1/S2), `consumers` (Octokit, Node, poller, Perch E2E) |
-| `tools/` | `fake-upstream` (GitHub-shaped stand-in), `postern-snapshots` (offscreen UI renders to `captures/`), `postern-shadow` (asks gh and Postern the same questions and logs whether they agree), `Postern.IconGen` (icons from `postern.svg`) |
+| `tools/` | `fake-upstream` (stand-ins for GitHub, Jira, Slack, Octopus and Anthropic, with fault knobs), `sallyport` (the test bed's companion app: request scenarios, soak and crash drills), `postern-snapshots` (offscreen UI renders to `captures/`), `postern-shadow` (asks gh and Postern the same questions and logs whether they agree), `Postern.IconGen` (icons from `postern.svg`) |
 
 ### Building a release (maintainers)
 

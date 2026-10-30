@@ -156,6 +156,25 @@ public sealed class NamespacedCredentialStore(ICredentialStore inner, string ns)
     public bool Delete(string target) => inner.Delete(Map(target, ns));
 }
 
+/// <summary>
+/// Postern (Sandbox)'s store. It refuses anything shaped like a real token, so a sandbox can't end up holding one
+/// through a slip of the clipboard. Its connections only reach loopback anyway; this keeps real secrets out of its
+/// Credential Manager entries as well.
+/// </summary>
+public sealed class SandboxCredentialStore(ICredentialStore inner) : ICredentialStore
+{
+    public string? Read(string target) => inner.Read(target);
+
+    public void Write(string target, string secret)
+    {
+        if (Sandbox.LooksReal(secret) is { } kind)
+            throw new ArgumentException($"This is the sandbox Postern, and that looks like a real {kind}. Sandbox credentials are made up: type anything else.");
+        inner.Write(target, secret);
+    }
+
+    public bool Delete(string target) => inner.Delete(target);
+}
+
 /// <summary>For tests.</summary>
 public sealed class InMemoryCredentialStore : ICredentialStore
 {

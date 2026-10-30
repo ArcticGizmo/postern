@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Postern.App\Postern.App.csproj" />
+    <ProjectReference Include="..\Postern.Sallyport\Postern.Sallyport.csproj" />
   </ItemGroup>
 
 </Project>

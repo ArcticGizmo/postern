@@ -25,6 +25,8 @@
     <ProjectReference Include="..\..\src\Postern.Core\Postern.Core.csproj" />
     <ProjectReference Include="..\..\src\Postern.Broker\Postern.Broker.csproj" />
     <ProjectReference Include="..\..\src\Postern.Client\Postern.Client.csproj" />
+    <!-- Its scenario files, which a typo would otherwise only break at run time. -->
+    <ProjectReference Include="..\..\tools\Postern.Sallyport\Postern.Sallyport.csproj" />
   </ItemGroup>
 
 </Project>

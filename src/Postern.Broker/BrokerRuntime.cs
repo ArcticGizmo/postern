@@ -55,7 +55,7 @@ public sealed class BrokerRuntime : IAsyncDisposable
         Options = options;
         Time = overrides.Time ?? TimeProvider.System;
         Credentials = overrides.Credentials ?? Profile.CredentialStore();
-        Connections = new Connections(options.Providers, options.DataDirectory, Credentials, options.ProvidersLoadError);
+        Connections = new Connections(options.Providers, options.DataDirectory, Credentials, options.ProvidersLoadError, options.LoopbackOnly);
         RateLimits = new RateLimits(Time);
 
         PosternDatabase? database = null;

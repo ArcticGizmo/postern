@@ -60,7 +60,9 @@ public partial class App : Application
         {
             await _broker!.StartAsync();
             UpdateTray();
-            _updater.Start();
+            // The sandbox stays on the machine, and a test bed swapping its own files mid-run would only confuse it.
+            if (!Profile.IsSandbox)
+                _updater.Start();
             if (_broker.Credentials.Read(Core.Providers.ProviderDefinition.GitHub.CredentialTarget) is null)
                 Open(MainWindow.ConnectionsKey); // first run: nothing works until there's a credential
             ShowWhatsNewAfterUpdate();
@@ -193,7 +195,7 @@ public partial class App : Application
             existing.Activate();
             return;
         }
-        var window = new MainWindow(_broker!, _updater, () => _desktop?.Shutdown(Program.ExitUpdating), page);
+        var window = new MainWindow(_broker!, _updater, () => _desktop?.Shutdown(Program.ExitUpdating), page, () => _desktop?.Shutdown(0));
         _main = window;
         window.Closed += (_, _) => _main = null;
         window.Show();

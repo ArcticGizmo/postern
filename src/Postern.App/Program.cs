@@ -29,7 +29,12 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
-        // First, before argument parsing: Velopack runs its install/update/uninstall hooks by launching the exe with
+        // Before anything reads the profile. As a variable, it also makes everything Postern starts (the supervised
+        // child, Sallyport, testbed-upstream, postern-cli) the sandbox too.
+        if (args.Contains(AppArgs.SandboxFlag))
+            Environment.SetEnvironmentVariable(Profile.SandboxVariable, "1");
+
+        // Before argument parsing: Velopack runs its install/update/uninstall hooks by launching the exe with
         // its own arguments, and exits here when it does.
         VelopackApp.Build()
             .OnBeforeUninstallFastCallback(_ => Updater.CleanUpBeforeUninstall())
@@ -65,10 +70,25 @@ internal static class Program
             return Supervisor.Run(Args, message => Logs.CreateLogger("Postern.Supervisor").LogInformation("{Message}", message));
 
         using var single = new Mutex(initiallyOwned: true, $@"Local\Postern-{Args.PipeName}", out var first);
-        if (!first)
+        if (!first && !(Args.ResetSandbox && WaitForTurn(single)))
         {
             log.LogInformation("Postern is already running for pipe {Pipe}; exiting.", Args.PipeName);
             return 0;
+        }
+
+        // Holding the mutex, so no other Postern on this pipe has the database open.
+        if (Args.ResetSandbox)
+        {
+            try
+            {
+                Sandbox.Reset(Args.DataDirectory);
+                log.LogWarning("Sandbox reset: deleted its database, providers.json and credentials in {Dir}.", Args.DataDirectory);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
+            {
+                log.LogError(ex, "Sandbox reset failed");
+                return ExitBrokerFailed;
+            }
         }
 
         if (Args.Headless)
@@ -76,6 +96,22 @@ internal static class Program
 
         // The shutdown code is what the supervisor reads: 0 (Quit) and ExitUpdating stop it, anything else restarts Postern.
         return BuildAvaloniaApp().StartWithClassicDesktopLifetime([]);
+    }
+
+    /// <summary>
+    /// A reset is started by the sandbox it replaces, which quits straight after, so it waits for that one to let go
+    /// rather than exiting as a second copy would.
+    /// </summary>
+    public static bool WaitForTurn(Mutex mutex)
+    {
+        try
+        {
+            return mutex.WaitOne(TimeSpan.FromSeconds(15));
+        }
+        catch (AbandonedMutexException)
+        {
+            return true; // the old one was killed rather than quitting; the mutex is ours all the same
+        }
     }
 
     /// <summary>The broker without a tray. Nobody can approve, so new registrations are denied (except dev auto-approve).</summary>
@@ -113,6 +149,8 @@ internal static class Program
         string? loadError = null;
         try
         {
+            if (Profile.IsSandbox && Sandbox.Seed(Args.DataDirectory, Profile.CredentialStore()))
+                Logs.CreateLogger("Postern.App").LogInformation("New sandbox: seeded its connections and fake credentials, all pointing at {Upstream}.", Sandbox.UpstreamOrigin);
             providers = BrokerOptions.LoadProviders(Args.DataDirectory);
         }
         catch (Exception ex) when (ex is ArgumentException or IOException)
@@ -128,6 +166,7 @@ internal static class Program
                 DataDirectory = Args.DataDirectory,
                 Providers = providers,
                 ProvidersLoadError = loadError,
+                LoopbackOnly = Profile.IsSandbox,
             },
             prompt,
             new BrokerOverrides { Logging = builder => builder.AddProvider(Logs) });

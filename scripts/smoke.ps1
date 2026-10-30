@@ -69,7 +69,7 @@ try {
     $status = Pst status
     $before = [regex]::Match($status, 'pid (\d+)').Groups[1].Value
     Stop-Process -Id $before -Force
-    $out = Pst call GET fakegh/echo   # dead pipe for a moment; the client retries while the supervisor restarts Postern
+    $out = Pst call GET fakegh/echo --wait 15   # dead pipe for a moment; the supervisor restarts Postern while the CLI waits
     Check ($LASTEXITCODE -eq 0) 'request during restart succeeded' "(exit $LASTEXITCODE)"
     $after = [regex]::Match((Pst status), 'pid (\d+)').Groups[1].Value
     Check ($after -and $after -ne $before) 'supervisor restarted Postern' "(pid $before -> $after)"

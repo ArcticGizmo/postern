@@ -1,0 +1,771 @@
+<title>Sallyport Testbed</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column (~68ch) for prose, widening to full width for the diagram and the two app mockups. Dark-first, in Postern's own palette. */
+:root {
+  --sunken: #101315;
+  --bg: #15181B;
+  --panel: #1E2226;
+  --line: #2E343A;
+  --fg: #E6E9EC;
+  --muted: #9AA4AE;
+  --accent: #4FB8A8;      /* Postern */
+  --sally: #7AA7F5;       /* the companion */
+  --sand: #CDB27F;        /* the sandbox profile */
+  --warn: #F5A524;
+  --danger: #EF5350;
+  --ok: #4ADE80;
+  --on-accent: #0B1F1C;
+  --f-display: "Archivo", "Segoe UI", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --sunken: #E6EBEE; --bg: #F4F6F7; --panel: #FFFFFF; --line: #D2D9DE; --fg: #14181B; --muted: #55606A;
+    --accent: #1F8174; --sally: #3466C2; --sand: #876B3A; --warn: #A86600; --danger: #C62828; --ok: #1B8445; --on-accent: #FFFFFF;
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --sunken: #E6EBEE; --bg: #F4F6F7; --panel: #FFFFFF; --line: #D2D9DE; --fg: #14181B; --muted: #55606A;
+  --accent: #1F8174; --sally: #3466C2; --sand: #876B3A; --warn: #A86600; --danger: #C62828; --ok: #1B8445; --on-accent: #FFFFFF;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--f-body); font-size: 16px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 80px;
+}
+.page { max-width: 1120px; margin: 0 auto; display: grid; gap: 72px; }
+.prose { max-width: 68ch; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; line-height: 1.15; }
+h1 { font-size: clamp(2.6rem, 7vw, 4.4rem); font-weight: 800; letter-spacing: -0.02em; }
+h2 { font-size: clamp(1.5rem, 3vw, 1.9rem); font-weight: 700; letter-spacing: -0.01em; }
+h3 { font-size: 1.08rem; font-weight: 700; }
+p { margin: 0; }
+section { display: grid; gap: 20px; }
+.eyebrow { font-family: var(--f-mono); font-size: 0.74rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+code, .mono { font-family: var(--f-mono); font-size: 0.86em; }
+:not(pre) > code { background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 0.05em 0.35em; }
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--sally); outline-offset: 2px; }
+
+/* Hero */
+.hero { display: grid; gap: 22px; }
+.hero .lede { font-size: 1.2rem; color: var(--fg); max-width: 60ch; }
+.hero .lede em { color: var(--sally); font-style: normal; font-weight: 600; }
+.verdict {
+  display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; align-items: start;
+  border-left: 3px solid var(--ok); background: var(--panel); padding: 16px 20px; max-width: 76ch;
+}
+.verdict .tag { font-family: var(--f-mono); font-size: 0.78rem; color: var(--ok); font-weight: 500; padding-top: 3px; }
+.etym { color: var(--muted); font-size: 0.92rem; max-width: 68ch; }
+
+/* Diagram */
+.figure { overflow-x: auto; border: 1px solid var(--line); background: var(--sunken); border-radius: 6px; }
+.figure svg { display: block; min-width: 860px; width: 100%; height: auto; }
+.d-box { fill: var(--panel); stroke: var(--line); stroke-width: 1.2; }
+.d-postern { stroke: var(--accent); stroke-width: 1.6; }
+.d-sally { stroke: var(--sally); stroke-width: 1.6; }
+.d-up { stroke: var(--sand); stroke-width: 1.6; }
+.d-real { fill: var(--sunken); stroke: var(--line); stroke-dasharray: 4 4; }
+.d-zone { fill: none; stroke: var(--sand); stroke-width: 1.2; stroke-dasharray: 7 6; }
+.d-t { fill: var(--fg); font-family: var(--f-display); font-weight: 700; font-size: 16px; }
+.d-s { fill: var(--muted); font-family: var(--f-mono); font-size: 11.5px; }
+.d-sm { fill: var(--muted); font-family: var(--f-body); font-size: 12.5px; }
+.d-zl { fill: var(--sand); font-family: var(--f-mono); font-size: 12px; letter-spacing: 0.06em; }
+.d-wire { stroke: var(--fg); stroke-width: 1.6; fill: none; }
+.d-wire-s { stroke: var(--sally); stroke-width: 1.4; fill: none; stroke-dasharray: 5 5; }
+.d-wire-x { stroke: var(--danger); stroke-width: 1.6; fill: none; stroke-dasharray: 3 4; }
+.d-x { stroke: var(--danger); stroke-width: 2.4; }
+.d-arrow { fill: var(--fg); }
+.d-arrow-s { fill: var(--sally); }
+.d-dot-a { fill: var(--accent); } .d-dot-s { fill: var(--sally); } .d-dot-u { fill: var(--sand); }
+.d-red { fill: var(--danger); font-family: var(--f-mono); font-size: 11.5px; }
+
+/* Pieces */
+.pieces { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.piece { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 18px; display: grid; gap: 10px; align-content: start; }
+.piece p { color: var(--muted); font-size: 0.93rem; }
+.piece ul { margin: 0; padding-left: 18px; font-size: 0.9rem; display: grid; gap: 4px; }
+.chip { font-family: var(--f-mono); font-size: 0.7rem; letter-spacing: 0.04em; padding: 2px 8px; border-radius: 999px; border: 1px solid currentColor; justify-self: start; }
+.chip.new { color: var(--sally); } .chip.ext { color: var(--sand); } .chip.have { color: var(--ok); }
+
+/* App window chrome shared by both mockups */
+.win { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--bg); box-shadow: 0 18px 50px -24px rgba(0,0,0,0.55); }
+.titlebar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--sunken); border-bottom: 1px solid var(--line); font-size: 0.8rem; color: var(--muted); }
+.titlebar .ico { width: 14px; height: 14px; border-radius: 3px; }
+.titlebar .ctrls { margin-left: auto; display: flex; gap: 14px; font-family: var(--f-mono); }
+.caption { color: var(--muted); font-size: 0.88rem; }
+.btn { font: inherit; font-size: 0.82rem; padding: 6px 12px; border-radius: 4px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); cursor: pointer; white-space: nowrap; }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.btn.sally { background: var(--sally); color: var(--on-accent); border-color: var(--sally); }
+.btn.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, var(--line)); }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-family: var(--f-mono); font-size: 0.74rem; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); white-space: nowrap; }
+.pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.pill.ok { color: var(--ok); } .pill.down { color: var(--danger); } .pill.wait { color: var(--warn); } .pill.sand { color: var(--sand); }
+
+/* Mockup 1: Postern main window, Testbed page */
+.pw { display: grid; grid-template-columns: 180px 1fr; min-height: 430px; }
+.rail { background: var(--sunken); border-right: 1px solid var(--line); display: flex; flex-direction: column; }
+.brand { display: flex; gap: 10px; align-items: center; padding: 16px 14px 12px; }
+.brand .logo { width: 26px; height: 26px; border-radius: 6px; background: var(--sand); }
+.brand b { font-family: var(--f-display); display: block; font-size: 0.95rem; }
+.brand span { font-size: 0.72rem; color: var(--muted); }
+.nav { display: flex; flex-direction: column; }
+.nav div { padding: 9px 14px; font-size: 0.86rem; color: var(--muted); border-left: 3px solid transparent; display: flex; justify-content: space-between; }
+.nav div.on { background: var(--panel); color: var(--fg); border-left-color: var(--accent); }
+.nav div small { font-size: 0.68rem; color: var(--sand); font-family: var(--f-mono); }
+.pw-main { padding: 22px 24px; display: grid; gap: 16px; align-content: start; min-width: 0; }
+.pw-main h3 { font-size: 1.15rem; }
+.sbx-banner { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 0.85rem; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--sand) 50%, var(--line)); background: color-mix(in srgb, var(--sand) 9%, var(--panel)); border-radius: 5px; }
+.tb-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.tb-card { background: var(--panel); border: 1px solid var(--line); border-radius: 5px; padding: 14px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.tb-card .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; font-size: 0.8rem; }
+.kv dt { color: var(--muted); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; padding-top: 2px; }
+.kv dd { margin: 0; font-family: var(--f-mono); font-size: 0.76rem; overflow-wrap: anywhere; }
+.tb-card .btns { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Mockup 2: Sallyport */
+.sp-top { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line); background: var(--panel); }
+.sp-top .spacer { flex: 1; }
+.sp-body { display: grid; grid-template-columns: 230px minmax(0, 1fr) 260px; min-height: 470px; }
+.sp-list { border-right: 1px solid var(--line); background: var(--sunken); overflow-y: auto; max-height: 560px; }
+.sp-group { font-size: 0.66rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding: 12px 12px 4px; }
+.sp-item { display: grid; grid-template-columns: 14px 1fr; gap: 8px; align-items: center; width: 100%; text-align: left; font: inherit; font-size: 0.84rem; color: var(--fg); background: none; border: 0; border-left: 3px solid transparent; padding: 6px 10px; cursor: pointer; }
+.sp-item:hover { background: var(--panel); }
+.sp-item[aria-current="true"] { background: var(--panel); border-left-color: var(--sally); }
+.mark { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--line); }
+.mark.pass { background: var(--ok); border-color: var(--ok); }
+.mark.fail { background: var(--danger); border-color: var(--danger); }
+.mark.run { border-color: var(--sally); border-style: dashed; }
+.sp-mid { padding: 14px 16px; display: grid; gap: 12px; align-content: start; min-width: 0; }
+.sp-note { font-size: 0.85rem; color: var(--muted); }
+.reqline { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-family: var(--f-mono); font-size: 0.8rem; }
+.meth { font-weight: 500; padding: 2px 7px; border-radius: 3px; background: color-mix(in srgb, var(--sally) 18%, var(--panel)); color: var(--sally); }
+.reqline .path { overflow-wrap: anywhere; min-width: 0; }
+.expect { font-size: 0.8rem; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.expect b { font-weight: 600; }
+.pane { border: 1px solid var(--line); border-radius: 5px; background: var(--sunken); min-width: 0; }
+.pane h4 { margin: 0; font-family: var(--f-body); font-size: 0.68rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); padding: 7px 10px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 8px; }
+.pane pre { margin: 0; padding: 10px; font-family: var(--f-mono); font-size: 0.74rem; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 210px; overflow-y: auto; }
+.hl { color: var(--accent); } .hw { color: var(--warn); } .hd { color: var(--danger); } .hs { color: var(--sand); } .hm { color: var(--muted); }
+.status-big { font-family: var(--f-mono); font-size: 0.8rem; }
+.sp-seen { border-left: 1px solid var(--line); padding: 14px; display: grid; gap: 10px; align-content: start; background: var(--sunken); min-width: 0; }
+.sp-seen .pane { background: var(--bg); }
+.sp-seen .verdict-mini { font-size: 0.8rem; padding: 8px 10px; border-radius: 4px; border: 1px solid var(--line); background: var(--bg); }
+.sp-soak { border-top: 1px solid var(--line); padding: 12px; display: grid; gap: 8px; background: var(--panel); }
+.soak-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 0.8rem; }
+.strip { display: grid; grid-template-columns: repeat(60, minmax(0, 1fr)); gap: 2px; height: 22px; }
+.strip i { border-radius: 2px; background: var(--ok); opacity: 0.85; }
+.strip i.down { background: var(--danger); }
+.strip i.retry { background: var(--warn); }
+.strip i.wait { background: var(--line); }
+.events { font-family: var(--f-mono); font-size: 0.72rem; color: var(--muted); display: grid; gap: 2px; max-height: 92px; overflow-y: auto; }
+.events .e-d { color: var(--danger); } .events .e-r { color: var(--warn); } .events .e-o { color: var(--ok); }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.74rem; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 5px; }
+.legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+
+/* Catalogue table */
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; }
+table { border-collapse: collapse; width: 100%; min-width: 760px; font-size: 0.88rem; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 0.7rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); background: var(--sunken); font-weight: 600; }
+tr.grp td { background: var(--panel); font-family: var(--f-display); font-weight: 700; font-size: 0.86rem; color: var(--sally); }
+td code { white-space: nowrap; }
+td.why { color: var(--muted); }
+
+/* Drills */
+.drills { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; }
+.drill { border-top: 3px solid var(--line); padding-top: 12px; display: grid; gap: 8px; align-content: start; }
+.drill.d1 { border-top-color: var(--danger); } .drill.d2 { border-top-color: var(--warn); } .drill.d3 { border-top-color: var(--sand); } .drill.d4 { border-top-color: var(--sally); }
+.drill p { font-size: 0.92rem; color: var(--muted); }
+.drill .exp { font-size: 0.88rem; color: var(--fg); }
+
+/* Rails + build order */
+.rails { display: grid; gap: 0; border-top: 1px solid var(--line); }
+.rail-row { display: grid; grid-template-columns: minmax(180px, 260px) 1fr; gap: 6px 24px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.rail-row h3 { font-size: 0.98rem; }
+.rail-row p { color: var(--muted); font-size: 0.93rem; }
+ol.steps { margin: 0; padding: 0; list-style: none; counter-reset: s; display: grid; gap: 14px; }
+ol.steps li { counter-increment: s; display: grid; grid-template-columns: 38px 1fr; gap: 14px; }
+ol.steps li::before { content: counter(s); font-family: var(--f-display); font-weight: 800; font-size: 1.3rem; color: var(--sally); line-height: 1.2; }
+ol.steps b { display: block; }
+ol.steps span { color: var(--muted); font-size: 0.93rem; }
+.qs { display: grid; gap: 12px; }
+.q { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; display: grid; gap: 4px; }
+.q p { color: var(--muted); font-size: 0.92rem; }
+.q .lean { color: var(--fg); font-size: 0.88rem; }
+.q .lean b { color: var(--sally); font-weight: 600; }
+footer { color: var(--muted); font-size: 0.84rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+@media (max-width: 900px) {
+  .sp-body { grid-template-columns: 1fr; }
+  .sp-list { border-right: 0; border-bottom: 1px solid var(--line); max-height: 240px; }
+  .sp-seen { border-left: 0; border-top: 1px solid var(--line); }
+  .pw { grid-template-columns: 1fr; }
+  .rail { display: none; }
+}
+@media (max-width: 560px) {
+  .rail-row { grid-template-columns: 1fr; }
+  .verdict { grid-template-columns: 1fr; }
+  .strip { grid-template-columns: repeat(30, minmax(0, 1fr)); }
+  .strip i:nth-child(-n+30) { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="page">
+
+  <header class="hero">
+    <div class="eyebrow">Postern · testbed proposal · 30 Oct 2026</div>
+    <h1>Sallyport</h1>
+    <p class="lede">A companion app that sends a library of real-shaped requests through Postern from its own window, in its own process, against a <em>sandbox Postern</em> that can only ever reach a fake on 127.0.0.1.</p>
+    <div class="verdict">
+      <div class="tag">FEASIBLE</div>
+      <div>Yes, and most of the plumbing is already in the repo. <code>Postern.Client</code> is the library a real app would use, <code>fake-upstream</code> is a GitHub-shaped stand-in, <code>--pipe</code> and <code>--data-dir</code> already isolate a run, and smoke.ps1 already crashes Postern under a client. What's missing is a profile that <b>can't</b> touch real credentials or real hosts, a fake that speaks more than GitHub, and a window to drive it all from.</div>
+    </div>
+    <p class="etym">The name: a sally port is the other small gate in a castle wall, the one defenders used to send sorties out and see what came back. It fits next to Postern, and the app's whole job is sending sorties. Rename freely.</p>
+  </header>
+
+  <section>
+    <div class="eyebrow">The picture</div>
+    <h2>Three processes, one fence</h2>
+    <p class="prose">Each box is its own exe with its own window or tray icon, so killing one shows exactly what the others see. Your installed Postern and Postern (Dev) sit outside the fence on their own pipes and are never involved.</p>
+    <div class="figure" role="img" aria-label="Sallyport talks to Postern (Sandbox) over the postern-sandbox pipe. Postern forwards to testbed-upstream on 127.0.0.1 with a fake credential. Sallyport also asks the upstream what it received. Postern's attempt to reach api.github.com is refused because the sandbox is loopback only. The real Postern sits outside the sandbox, untouched.">
+      <svg viewBox="0 0 960 400" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-arrow"/></marker>
+          <marker id="ahs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-arrow-s"/></marker>
+        </defs>
+
+        <rect x="14" y="74" width="932" height="312" rx="10" class="d-zone"/>
+        <text x="30" y="96" class="d-zl">SANDBOX · NOTHING LEAVES 127.0.0.1</text>
+
+        <rect x="40" y="130" width="220" height="132" rx="8" class="d-box d-sally"/>
+        <circle cx="62" cy="156" r="6" class="d-dot-s"/>
+        <text x="76" y="161" class="d-t">sallyport.exe</text>
+        <text x="58" y="186" class="d-s">own process, own window</text>
+        <text x="58" y="204" class="d-s">references Postern.Client</text>
+        <text x="58" y="222" class="d-s">only, never the Broker</text>
+        <text x="58" y="246" class="d-s">registers like any app</text>
+
+        <rect x="370" y="130" width="236" height="132" rx="8" class="d-box d-postern"/>
+        <circle cx="392" cy="156" r="6" class="d-dot-a"/>
+        <text x="406" y="161" class="d-t">Postern (Sandbox)</text>
+        <text x="388" y="186" class="d-s">pipe   postern-sandbox</text>
+        <text x="388" y="204" class="d-s">data   Postern.Sandbox\</text>
+        <text x="388" y="222" class="d-s">creds  postern-sandbox:*</text>
+        <text x="388" y="246" class="d-s">hosts  loopback only</text>
+
+        <rect x="716" y="130" width="214" height="132" rx="8" class="d-box d-up"/>
+        <circle cx="738" cy="156" r="6" class="d-dot-u"/>
+        <text x="752" y="161" class="d-t">testbed-upstream</text>
+        <text x="734" y="186" class="d-s">127.0.0.1:5599</text>
+        <text x="734" y="204" class="d-s">/github /jira /slack</text>
+        <text x="734" y="222" class="d-s">/octopus /anthropic</text>
+        <text x="734" y="246" class="d-s">chaos knobs, /_seen</text>
+
+        <path d="M260 176 H368" class="d-wire" marker-end="url(#ah)"/>
+        <text x="270" y="166" class="d-sm">HTTP over the pipe</text>
+        <text x="270" y="198" class="d-s">Postern-App-Token</text>
+
+        <path d="M606 176 H714" class="d-wire" marker-end="url(#ah)"/>
+        <text x="616" y="166" class="d-sm">+ fake credential</text>
+        <text x="616" y="198" class="d-s">sandbox-not-a-…</text>
+
+        <path d="M150 262 C150 350, 823 350, 823 264" class="d-wire-s" marker-end="url(#ahs)"/>
+        <text x="330" y="334" class="d-sm">GET /_seen: what did the upstream actually receive? (auth masked)</text>
+
+        <path d="M488 130 V40 H700" class="d-wire-x"/>
+        <line x1="580" y1="30" x2="600" y2="50" class="d-x"/><line x1="600" y1="30" x2="580" y2="50" class="d-x"/>
+        <rect x="704" y="18" width="226" height="42" rx="6" class="d-real"/>
+        <text x="718" y="44" class="d-s">api.github.com, *.atlassian.net…</text>
+        <text x="500" y="70" class="d-red">refused: sandbox-host</text>
+
+        <rect x="40" y="18" width="250" height="42" rx="6" class="d-real"/>
+        <text x="54" y="37" class="d-s">Postern / Postern (Dev)</text>
+        <text x="54" y="52" class="d-s">pipes postern, postern-dev: untouched</text>
+
+        <text x="388" y="290" class="d-sm">Testbed page starts the other two,</text>
+        <text x="388" y="306" class="d-sm">detached, so they outlive a crash</text>
+      </svg>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">What gets built</div>
+    <h2>Four pieces, two of them half there</h2>
+    <div class="pieces">
+      <div class="piece">
+        <span class="chip ext">extends Profile</span>
+        <h3>A Sandbox profile</h3>
+        <p>A third profile beside Live and Dev, started with <code>--sandbox</code> (or <code>.\testbed.cmd</code>). Same idea as Dev, with the doors welded shut.</p>
+        <ul>
+          <li>Pipe <code>postern-sandbox</code>, data in <code>Postern.Sandbox\</code></li>
+          <li>Credentials namespaced <code>postern-sandbox:</code></li>
+          <li>Refuses any base URL that isn't loopback</li>
+          <li>Seeds connections and dummy credentials on first run</li>
+          <li>Sand-coloured tray icon, "(Sandbox)" in every title</li>
+        </ul>
+      </div>
+      <div class="piece">
+        <span class="chip ext">grows fake-upstream</span>
+        <h3>testbed-upstream</h3>
+        <p>Today's fake speaks GitHub only. It grows a route prefix per service and a few knobs you can flip from Sallyport.</p>
+        <ul>
+          <li>GitHub, Jira, Slack, Octopus and Anthropic shapes</li>
+          <li>Pagination, ETags, redirects, SSE, gzip, big bodies</li>
+          <li>Knobs: latency, 429, 500, hang, drop the connection</li>
+          <li><code>/_seen</code>: the last N requests as it received them</li>
+        </ul>
+      </div>
+      <div class="piece">
+        <span class="chip new">new exe</span>
+        <h3>Sallyport</h3>
+        <p>An Avalonia window in <code>tools/Postern.Sallyport</code>. It references <code>Postern.Client</code> and nothing else from the solution, so it behaves exactly like a third-party app.</p>
+        <ul>
+          <li>Scenario library, each with an expected outcome</li>
+          <li>Run one, run all, or soak at a steady rate</li>
+          <li>Shows Postern's answer beside what upstream saw</li>
+          <li><code>--run-all</code> for a headless pass in CI</li>
+        </ul>
+      </div>
+      <div class="piece">
+        <span class="chip new">new page, sandbox and dev only</span>
+        <h3>Testbed page in Postern</h3>
+        <p>A nav item that only exists outside Release builds. It shows the sandbox's state and launches the other two as separate processes.</p>
+        <ul>
+          <li>Open Sallyport, start or stop the upstream</li>
+          <li>Reset sandbox: wipe data and <code>postern-sandbox:*</code></li>
+          <li>Launch with <code>UseShellExecute</code> so nothing inherits Postern's console or dies with it</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">Mockup 1 · inside Postern</div>
+    <h2>The Testbed page</h2>
+    <p class="prose">The popout starts here. Clicking <b>Open Sallyport</b> starts <code>sallyport.exe</code> as its own process. It gets its own taskbar button, and the approval prompt that follows is the real one, because the prompt is part of what's under test.</p>
+    <div class="win" aria-label="Mockup of Postern's main window on the Testbed page">
+      <div class="titlebar"><span class="ico" style="background:var(--sand)"></span>Postern (Sandbox)<span class="ctrls"><span>—</span><span>☐</span><span>✕</span></span></div>
+      <div class="pw">
+        <div class="rail">
+          <div class="brand"><span class="logo"></span><div><b>Postern</b><span>0.1.1 (Sandbox)</span></div></div>
+          <div class="nav">
+            <div>Apps</div><div>Connections</div><div>Audit log</div><div>General</div><div>Updates</div><div>Changelog</div><div>How it works</div>
+            <div class="on">Testbed <small>sandbox</small></div>
+          </div>
+        </div>
+        <div class="pw-main">
+          <h3>Testbed</h3>
+          <div class="sbx-banner"><span class="pill sand">sandbox</span>This Postern can only reach 127.0.0.1. Its credentials are fakes, and real-looking tokens are refused.</div>
+          <div class="tb-grid">
+            <div class="tb-card">
+              <div class="row"><b>Sallyport</b><span class="pill ok">running · pid 22140</span></div>
+              <p class="caption">Sends scenario requests through this Postern as an ordinary app.</p>
+              <div class="btns"><button class="btn primary" type="button">Open Sallyport</button><button class="btn" type="button">Close</button></div>
+            </div>
+            <div class="tb-card">
+              <div class="row"><b>testbed-upstream</b><span class="pill ok">127.0.0.1:5599</span></div>
+              <p class="caption">Stand-in for GitHub, Jira, Slack, Octopus and Anthropic.</p>
+              <div class="btns"><button class="btn" type="button">Stop</button><button class="btn" type="button">Show console</button></div>
+            </div>
+            <div class="tb-card">
+              <b>This sandbox</b>
+              <dl class="kv">
+                <dt>Pipe</dt><dd>\\.\pipe\postern-sandbox</dd>
+                <dt>Data</dt><dd>%LOCALAPPDATA%\Postern.Sandbox</dd>
+                <dt>Connections</dt><dd>github, github-work, jira, slack, octopus, anthropic, jira-empty</dd>
+                <dt>Credentials</dt><dd>6 seeded fakes, 1 left missing on purpose</dd>
+              </dl>
+              <div class="btns"><button class="btn danger" type="button">Reset sandbox…</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">Mockup 2 · the popout</div>
+    <h2>Sallyport</h2>
+    <p class="prose">This one works. Pick a scenario on the left to see the request, Postern's answer and what the upstream received. <b>Run all</b> walks the list. <b>Crash Postern</b> and <b>Quit Postern</b> show the soak strip at the bottom riding out an outage.</p>
+    <div class="win" id="sally" aria-label="Interactive mockup of the Sallyport window">
+      <div class="titlebar"><span class="ico" style="background:var(--sally)"></span>Sallyport → Postern (Sandbox)<span class="ctrls"><span>—</span><span>☐</span><span>✕</span></span></div>
+      <div class="sp-top">
+        <span class="pill ok" id="pipePill">postern-sandbox · pid 41872</span>
+        <span class="pill ok" id="tokenPill">approved · 9 scopes</span>
+        <span class="spacer"></span>
+        <button class="btn sally" type="button" id="runAll">Run all</button>
+        <button class="btn" type="button" id="soakBtn">Pause soak</button>
+        <button class="btn danger" type="button" id="crashBtn">Crash Postern</button>
+        <button class="btn" type="button" id="quitBtn">Quit Postern</button>
+      </div>
+      <div class="sp-body">
+        <nav class="sp-list" id="list" aria-label="Scenarios"></nav>
+        <div class="sp-mid">
+          <div class="sp-note" id="note"></div>
+          <div class="reqline"><span class="meth" id="meth"></span><span class="path" id="path"></span></div>
+          <div class="expect" id="expect"></div>
+          <div class="pane"><h4><span>Request as Sallyport sent it</span><span class="hm">over the pipe</span></h4><pre id="req"></pre></div>
+          <div class="pane"><h4><span>Response</span><span class="status-big" id="status"></span></h4><pre id="res"></pre></div>
+        </div>
+        <aside class="sp-seen">
+          <div class="pane"><h4><span>What upstream received</span><span class="hm">/_seen</span></h4><pre id="seen"></pre></div>
+          <div class="verdict-mini" id="checks"></div>
+        </aside>
+      </div>
+      <div class="sp-soak">
+        <div class="soak-head"><b>Soak · GET github/user every 1 s</b><span class="legend"><span><i style="background:var(--ok)"></i>200</span><span><i style="background:var(--warn)"></i>retried, then ok</span><span><i style="background:var(--danger)"></i>Postern unavailable</span></span></div>
+        <div class="strip" id="strip" aria-label="Soak results, oldest on the left"></div>
+        <div class="events" id="events" aria-live="polite"></div>
+      </div>
+    </div>
+    <p class="caption">Sample data throughout. The one failing scenario is made up to show how a mismatch reads.</p>
+  </section>
+
+  <section>
+    <div class="eyebrow">The scenario library</div>
+    <h2>The common shapes, each with a stated expectation</h2>
+    <p class="prose">A scenario is a request plus what should happen, so the list doubles as a test suite. These live as JSON files beside the exe, so adding one is a file, not a rebuild.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Scenario</th><th>Request</th><th>Expect</th><th>Why it's here</th></tr></thead>
+        <tbody>
+          <tr class="grp"><td colspan="4">Shapes of data</td></tr>
+          <tr><td>JSON object</td><td><code>GET github/user</code></td><td>200, Bearer injected</td><td class="why">The baseline every other check builds on</td></tr>
+          <tr><td>Paged list</td><td><code>GET github/repos/acme/api/pulls?per_page=2</code></td><td>200, <code>Link</code> intact</td><td class="why"><code>Link</code> holds upstream URLs; clients must still follow them through Postern</td></tr>
+          <tr><td>GraphQL</td><td><code>POST github/graphql</code></td><td>200, graphql rate bucket</td><td class="why">One endpoint, coarse scope, its own rate-limit resource</td></tr>
+          <tr><td>Form post</td><td><code>POST slack/chat.postMessage</code></td><td>200, body byte-identical</td><td class="why"><code>x-www-form-urlencoded</code> passes through untouched</td></tr>
+          <tr><td>Multipart upload</td><td><code>POST jira/rest/api/3/issue/SBX-1/attachments</code></td><td>200, Basic injected</td><td class="why">Boundaries, a binary part, Jira's <code>X-Atlassian-Token</code></td></tr>
+          <tr><td>Binary download</td><td><code>GET octopus/api/packages/pkg-1/raw</code></td><td>200, SHA-256 matches</td><td class="why">2.4 MB of bytes arrives exactly, with a custom-header credential</td></tr>
+          <tr><td>Unicode and large</td><td><code>GET github/repos/acme/api/issues/7</code></td><td>200, 5 MB, hash matches</td><td class="why">Emoji, RTL text and surrogate pairs in a body big enough to stream</td></tr>
+          <tr><td>Empty</td><td><code>DELETE github/repos/acme/api/labels/stale</code></td><td>204, no body</td><td class="why">No content and no content-type must not confuse the proxy</td></tr>
+          <tr class="grp"><td colspan="4">HTTP behaviour</td></tr>
+          <tr><td>Conditional</td><td><code>GET …/pulls</code> + <code>If-None-Match</code></td><td>304, remaining unchanged</td><td class="why">304s are free on GitHub; the accountant must agree</td></tr>
+          <tr><td>Redirect</td><td><code>GET github/repos/acme/api/tarball</code></td><td>302 returned, not followed</td><td class="why">A followed redirect would carry the app token to the wrong host</td></tr>
+          <tr><td>Streaming</td><td><code>POST anthropic/v1/messages</code> (stream)</td><td>chunks arrive as sent</td><td class="why">SSE must not be buffered into one late lump</td></tr>
+          <tr class="grp"><td colspan="4">Upstream misbehaving</td></tr>
+          <tr><td>Rate limited</td><td>knob <code>429</code> on <code>github</code></td><td>429, <code>Retry-After</code> kept</td><td class="why">Postern-RateLimit-* headers should say 0 left</td></tr>
+          <tr><td>Server error</td><td>knob <code>500</code></td><td>500 passed back, no Postern-Error</td><td class="why">Clients must tell "the service failed" from "Postern refused"</td></tr>
+          <tr><td>Hang</td><td>knob <code>hang 120s</code></td><td>client timeout, Postern stays healthy</td><td class="why">One stuck upstream mustn't block other apps' requests</td></tr>
+          <tr class="grp"><td colspan="4">Postern saying no</td></tr>
+          <tr><td>Out of scope</td><td><code>DELETE github/repos/acme/api</code></td><td>403 <code>scope-denied</code>, upstream saw nothing</td><td class="why">The core promise, checked from the far side</td></tr>
+          <tr><td>Encoded slash</td><td><code>GET github/repos/a%2Fb/x/pulls</code></td><td>400 <code>bad-path</code></td><td class="why">Path tricks can't widen a glob</td></tr>
+          <tr><td>No credential</td><td><code>GET jira-empty/rest/api/3/myself</code></td><td><code>credential-missing</code></td><td class="why">The seeded sandbox leaves one connection empty on purpose</td></tr>
+          <tr><td>No token</td><td>any request, token header stripped</td><td><code>no-token</code></td><td class="why">What an app sees before it registers</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">When Postern goes down</div>
+    <h2>Four drills, run from Sallyport</h2>
+    <p class="prose">Sallyport can do this safely because it only ever acts on the sandbox's pid, which it reads from the same status call postern-cli uses. It runs with a soak going, so each drill leaves a visible trace in the strip and the event log.</p>
+    <div class="drills">
+      <div class="drill d1"><h3>Crash</h3><p>Kill the Postern process while the supervisor is watching.</p><p class="exp">One or two amber cells while the client retries, a new pid within about 2 s, no new approval prompt.</p></div>
+      <div class="drill d2"><h3>Quit</h3><p>Ask Postern to exit cleanly, with no supervisor to bring it back.</p><p class="exp">Red cells and <code>PosternUnavailableException</code> until you start it again; then it carries on with the same token.</p></div>
+      <div class="drill d3"><h3>Revoke mid-soak</h3><p>Revoke Sallyport on Postern's Apps page while it's sending.</p><p class="exp">The next request gets <code>app-revoked</code> at once. Sallyport doesn't ask to register again by itself.</p></div>
+      <div class="drill d4"><h3>Wait for start</h3><p>Start Sallyport with Postern not running.</p><p class="exp">It shows "waiting for postern-sandbox" using <code>WaitUntilAvailableAsync</code>, and registers as soon as the pipe appears.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">Why it's safe</div>
+    <h2>Rails that hold even when you're careless</h2>
+    <div class="rails">
+      <div class="rail-row"><h3>Loopback only, enforced by the broker</h3><p>In the Sandbox profile, the connection validator rejects any base URL whose host isn't 127.0.0.1, ::1 or localhost, and the forwarder checks again per request. It fails closed with <code>sandbox-host</code>, so a pasted real URL produces an error, not a call.</p></div>
+      <div class="rail-row"><h3>Fake credentials, real ones refused</h3><p>Seeded values are obviously fake (<code>sandbox-not-a-secret-01</code>). The credential dialog and <code>postern-cli credential set</code> refuse anything shaped like a real token: <code>ghp_</code>, <code>github_pat_</code>, <code>glpat-</code>, <code>xox</code>, <code>sk-</code>, <code>sk-ant-</code>. Even if one got in, the loopback rule means it could never be sent anywhere.</p></div>
+      <div class="rail-row"><h3>Its own pipe, data and namespace</h3><p>Same mechanism as Dev: <code>postern-sandbox</code>, <code>Postern.Sandbox\</code> and <code>postern-sandbox:*</code> in Credential Manager. A sandbox can't read, change or delete what Live or Dev hold.</p></div>
+      <div class="rail-row"><h3>Sallyport refuses other pipes</h3><p>It connects to <code>postern-sandbox</code> by default, and to <code>postern-dev</code> only behind a red banner. It won't start against <code>postern</code> at all, so it can never put scenario traffic through your real credentials.</p></div>
+      <div class="rail-row"><h3>Nothing ships</h3><p>Sallyport, testbed-upstream and the Testbed page are excluded from Release builds and the installer, the way <code>--dev-auto-approve</code> already is.</p></div>
+      <div class="rail-row"><h3>Reset is one click</h3><p>Reset deletes <code>Postern.Sandbox\</code> and every <code>postern-sandbox:*</code> credential, then seeds again. The next run starts from a known state.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">Build order</div>
+    <h2>Each step is useful on its own</h2>
+    <ol class="steps">
+      <li><div><b>Sandbox profile and the loopback rule</b><span>Generalise <code>Profile</code> from a Dev flag to Live, Dev and Sandbox. Add the host check, the token-shape check and the seed. smoke.ps1 can switch to it straight away.</span></div></li>
+      <li><div><b>testbed-upstream</b><span>Route prefixes per service, the extra shapes, the chaos knobs and <code>/_seen</code>. Still a console exe.</span></div></li>
+      <li><div><b>Sallyport, minimum version</b><span>Scenario list, send, response, upstream view, pass or fail. Launched by hand at first.</span></div></li>
+      <li><div><b>Testbed page and drills</b><span>Launch Sallyport and the upstream from Postern, add Reset, add the soak strip and the four drills.</span></div></li>
+      <li><div><b>Headless mode</b><span><code>sallyport --run-all</code> exits non-zero on any mismatch, so CI runs the whole library against a sandbox Postern after the unit tests.</span></div></li>
+    </ol>
+  </section>
+
+  <section>
+    <div class="eyebrow">Your call</div>
+    <h2>Decisions before building</h2>
+    <div class="qs">
+      <div class="q"><h3>A real Sandbox profile, or Dev with flags?</h3><p>Dev plus <code>--pipe</code> and <code>--data-dir</code> already isolates data, but credentials still land under <code>postern-dev:</code> and nothing stops a real host.</p><p class="lean"><b>Leaning:</b> a real profile. The loopback rule is what makes it safe, and it needs a profile to hang off.</p></div>
+      <div class="q"><h3>Should Sallyport be able to kill Postern?</h3><p>It's the quickest way to run the drills. It also means a tool holding a "kill the broker" button, even if only for the sandbox pid.</p><p class="lean"><b>Leaning:</b> yes, sandbox pid only, checked against the pipe's published broker path before killing.</p></div>
+      <div class="q"><h3>Auto-approve Sallyport?</h3><p><code>--dev-auto-approve sallyport</code> makes runs faster. Leaving the prompt in tests the prompt every time.</p><p class="lean"><b>Leaning:</b> prompt in the window, auto-approve in <code>--run-all</code>.</p></div>
+      <div class="q"><h3>Beyond .NET?</h3><p>Sallyport exercises <code>Postern.Client</code>. The Node and PowerShell paths from How it works would need their own small runners.</p><p class="lean"><b>Leaning:</b> later. Keep the scenario JSON language-neutral so a Node runner can read the same files.</p></div>
+    </div>
+  </section>
+
+  <footer>Design sketch for the Postern repo. Names, pids, paths and responses in the mockups are illustrative.</footer>
+</div>
+
+<script>
+(() => {
+  const S = [
+    { g: "Shapes of data", id: "json", name: "JSON object", note: "The baseline. A plain GET whose answer is one JSON object.",
+      m: "GET", p: "github/user", expect: ["200", "Authorization: Bearer injected", "app token not forwarded"],
+      req: "GET /github/user HTTP/1.1\nHost: postern\nPostern-App-Token: pat_sb_9f2c…\nAccept: application/vnd.github+json\nUser-Agent: sallyport/0.1",
+      status: "200 OK", res: "<span class=hl>Postern-Upstream-Ms: 4</span>\n<span class=hl>Postern-RateLimit-Resource: core</span>\n<span class=hl>Postern-RateLimit-Remaining: 4987</span>\nContent-Type: application/json\n\n{\n  \"login\": \"sandbox-user\",\n  \"id\": 1001,\n  \"type\": \"User\"\n}",
+      seen: "GET /user\nHost: 127.0.0.1:5599\n<span class=hs>Authorization: Bearer sandbox-no…</span>\nAccept: application/vnd.github+json\n<span class=hm>(no Postern-App-Token)</span>", result: "pass" },
+    { g: "Shapes of data", id: "paged", name: "Paged list", note: "A list with a Link header. The links point at the upstream; the client has to rewrite them onto Postern.",
+      m: "GET", p: "github/repos/acme/api/pulls?per_page=2", expect: ["200", "Link header intact", "2 items"],
+      req: "GET /github/repos/acme/api/pulls?per_page=2 HTTP/1.1\nHost: postern\nPostern-App-Token: pat_sb_9f2c…",
+      status: "200 OK", res: "<span class=hl>Postern-RateLimit-Remaining: 4986</span>\nLink: &lt;http://127.0.0.1:5599/repos/acme/api/pulls?per_page=2&amp;page=2&gt;; rel=\"next\",\n      &lt;…page=7&gt;; rel=\"last\"\n\n[\n  { \"number\": 41, \"title\": \"Retry the pipe on ERROR_PIPE_BUSY\", \"state\": \"open\" },\n  { \"number\": 40, \"title\": \"Sandbox profile\", \"state\": \"open\" }\n]",
+      seen: "GET /repos/acme/api/pulls?per_page=2\n<span class=hs>Authorization: Bearer sandbox-no…</span>", result: "pass" },
+    { g: "Shapes of data", id: "gql", name: "GraphQL", note: "One endpoint, a JSON body, and its own rate-limit bucket.",
+      m: "POST", p: "github/graphql", expect: ["200", "resource = graphql"],
+      req: "POST /github/graphql HTTP/1.1\nContent-Type: application/json\nPostern-App-Token: pat_sb_9f2c…\n\n{\"query\":\"{ viewer { login } rateLimit { remaining cost } }\"}",
+      status: "200 OK", res: "<span class=hl>Postern-RateLimit-Resource: graphql</span>\n<span class=hl>Postern-RateLimit-Remaining: 4999</span>\n\n{ \"data\": { \"viewer\": { \"login\": \"sandbox-user\" },\n           \"rateLimit\": { \"remaining\": 4999, \"cost\": 1 } } }",
+      seen: "POST /graphql\nContent-Length: 62\n<span class=hs>Authorization: Bearer sandbox-no…</span>\nbody sha256 matches what Sallyport sent", result: "pass" },
+    { g: "Shapes of data", id: "form", name: "Form post", note: "Slack's Web API takes form-encoded bodies. The body must arrive byte for byte.",
+      m: "POST", p: "slack/chat.postMessage", expect: ["200", "body byte-identical"],
+      req: "POST /slack/chat.postMessage HTTP/1.1\nContent-Type: application/x-www-form-urlencoded\n\nchannel=C0SANDBOX&text=Sortie%20%2342%20%E2%9C%93",
+      status: "200 OK", res: "Content-Type: application/json\n\n{ \"ok\": true, \"channel\": \"C0SANDBOX\", \"ts\": \"1793346131.000100\" }",
+      seen: "POST /chat.postMessage\n<span class=hs>Authorization: Bearer sandbox-no…</span>\nContent-Type: application/x-www-form-urlencoded\nbody: 48 bytes, sha256 matches", result: "pass" },
+    { g: "Shapes of data", id: "multi", name: "Multipart upload", note: "A file part and a text part, Basic auth built from two fields, and Jira's XSRF header.",
+      m: "POST", p: "jira/rest/api/3/issue/SBX-1/attachments", expect: ["200", "Basic injected", "both parts intact"],
+      req: "POST /jira/rest/api/3/issue/SBX-1/attachments HTTP/1.1\nX-Atlassian-Token: no-check\nContent-Type: multipart/form-data; boundary=sally7f3\n\n--sally7f3\nContent-Disposition: form-data; name=\"file\"; filename=\"trace.bin\"\n&lt;65,536 bytes&gt;\n--sally7f3--",
+      status: "200 OK", res: "[ { \"id\": \"10001\", \"filename\": \"trace.bin\", \"size\": 65536 } ]",
+      seen: "POST /rest/api/3/issue/SBX-1/attachments\n<span class=hs>Authorization: Basic c2FuZGJveEBl…</span>\nX-Atlassian-Token: no-check\nparts: file (65,536 B, sha256 ok)", result: "pass" },
+    { g: "Shapes of data", id: "bin", name: "Binary download", note: "Octopus sends its key in X-Octopus-ApiKey, not Authorization.",
+      m: "GET", p: "octopus/api/packages/pkg-1/raw", expect: ["200", "2.4 MB", "sha256 matches"],
+      req: "GET /octopus/api/packages/pkg-1/raw HTTP/1.1\nPostern-App-Token: pat_sb_9f2c…",
+      status: "200 OK", res: "Content-Type: application/octet-stream\nContent-Length: 2516582\n\n&lt;2,516,582 bytes, sha256 4f1a…c09e: matches the fixture&gt;",
+      seen: "GET /api/packages/pkg-1/raw\n<span class=hs>X-Octopus-ApiKey: API-SANDBO…</span>\n<span class=hm>(no Authorization header)</span>", result: "pass" },
+    { g: "Shapes of data", id: "uni", name: "Unicode and large", note: "Emoji, right-to-left text and surrogate pairs in a body big enough to stream.",
+      m: "GET", p: "github/repos/acme/api/issues/7", expect: ["200", "5 MB", "sha256 matches"],
+      req: "GET /github/repos/acme/api/issues/7 HTTP/1.1\nAccept-Encoding: gzip",
+      status: "200 OK", res: "Content-Encoding: gzip\n\n{ \"title\": \"Sortie ✓ 🏰 שלום 𝄞\",\n  \"body\": \"…5,242,880 bytes…\" }\n\n<span class=hm>decompressed sha256 matches the fixture</span>",
+      seen: "GET /repos/acme/api/issues/7\nAccept-Encoding: gzip", result: "pass" },
+    { g: "Shapes of data", id: "empty", name: "Empty", note: "No content and no content type.",
+      m: "DELETE", p: "github/repos/acme/api/labels/stale", expect: ["204", "no body"],
+      req: "DELETE /github/repos/acme/api/labels/stale HTTP/1.1",
+      status: "204 No Content", res: "<span class=hl>Postern-Upstream-Ms: 3</span>\n\n<span class=hm>(empty)</span>",
+      seen: "DELETE /repos/acme/api/labels/stale\n<span class=hs>Authorization: Bearer sandbox-no…</span>", result: "pass" },
+    { g: "HTTP behaviour", id: "etag", name: "Conditional (304)", note: "A repeat with the ETag. GitHub doesn't charge for a 304, and Postern's numbers should agree.",
+      m: "GET", p: "github/repos/acme/api/pulls", expect: ["304", "remaining unchanged"],
+      req: "GET /github/repos/acme/api/pulls HTTP/1.1\nIf-None-Match: \"8C1D0E4F2A7B9C31\"",
+      status: "304 Not Modified", res: "ETag: \"8C1D0E4F2A7B9C31\"\n<span class=hl>Postern-RateLimit-Remaining: 4986</span>  <span class=hm>(same as before)</span>",
+      seen: "GET /repos/acme/api/pulls\nIf-None-Match: \"8C1D0E4F2A7B9C31\"", result: "pass" },
+    { g: "HTTP behaviour", id: "redir", name: "Redirect", note: "The archive redirects to another host. Postern hands the 302 back; following it would send the app token to the wrong place.",
+      m: "GET", p: "github/repos/acme/api/tarball", expect: ["302 returned", "not followed"],
+      req: "GET /github/repos/acme/api/tarball HTTP/1.1",
+      status: "302 Found", res: "Location: https://codeload.example/acme/api/tar.gz/main?token=presigned\n\n<span class=hm>Sallyport did not follow it.</span>",
+      seen: "GET /repos/acme/api/tarball\n<span class=hm>(one request only; nothing reached codeload.example)</span>", result: "pass" },
+    { g: "HTTP behaviour", id: "sse", name: "Streaming (SSE)", note: "Server-sent events must arrive as the upstream writes them, not as one lump at the end.",
+      m: "POST", p: "anthropic/v1/messages", expect: ["200", "first chunk < 300 ms", "chunks spaced as sent"],
+      req: "POST /anthropic/v1/messages HTTP/1.1\nContent-Type: application/json\n\n{\"model\":\"sandbox\",\"stream\":true,\"max_tokens\":64,\n \"messages\":[{\"role\":\"user\",\"content\":\"ping\"}]}",
+      status: "200 OK", res: "Content-Type: text/event-stream\n\nevent: message_start      <span class=hd>+4,102 ms</span>\nevent: content_block_delta <span class=hd>+4,102 ms</span>\nevent: content_block_delta <span class=hd>+4,103 ms</span>\nevent: message_stop       <span class=hd>+4,103 ms</span>",
+      seen: "POST /v1/messages\n<span class=hs>x-api-key: sandbox-no…</span>\nanthropic-version: 2023-06-01\nwrote 4 events, 1 s apart", result: "fail",
+      why: "First chunk after 4.1 s; all four arrived together. Something buffered the stream." },
+    { g: "Upstream misbehaving", id: "429", name: "Rate limited", note: "Knob: 429 on the github routes for the next 3 requests.",
+      m: "GET", p: "github/user", expect: ["429", "Retry-After kept", "Remaining: 0"],
+      req: "GET /github/user HTTP/1.1",
+      status: "429 Too Many Requests", res: "Retry-After: 30\n<span class=hw>Postern-RateLimit-Remaining: 0</span>\n<span class=hw>Postern-RateLimit-Reset: 1793349731</span>\n\n{ \"message\": \"API rate limit exceeded\" }",
+      seen: "GET /user  <span class=hw>(knob: 429, 2 left)</span>", result: "pass" },
+    { g: "Upstream misbehaving", id: "500", name: "Server error", note: "Knob: 500. The service failed, Postern didn't, and the response must make that clear.",
+      m: "GET", p: "jira/rest/api/3/myself", expect: ["500", "no Postern-Error header"],
+      req: "GET /jira/rest/api/3/myself HTTP/1.1",
+      status: "500 Internal Server Error", res: "Content-Type: application/json\n<span class=hm>(no Postern-Error header: this came from the service)</span>\n\n{ \"errorMessages\": [\"Sandbox says no\"] }",
+      seen: "GET /rest/api/3/myself  <span class=hw>(knob: 500)</span>", result: "pass" },
+    { g: "Upstream misbehaving", id: "hang", name: "Hang", note: "Knob: hang for 120 s. Sallyport times out at 15 s and checks Postern still answers other requests meanwhile.",
+      m: "GET", p: "octopus/api/projects", expect: ["client timeout", "status call ok during hang"],
+      req: "GET /octopus/api/projects HTTP/1.1",
+      status: "timeout at 15 s", res: "<span class=hw>TaskCanceledException after 15,000 ms</span>\n\nmeanwhile: GET github/user → 200 in 6 ms\n          postern status → ok",
+      seen: "GET /api/projects  <span class=hw>(knob: hang 120 s, still open)</span>", result: "pass" },
+    { g: "Postern saying no", id: "scope", name: "Out of scope", note: "Sallyport's approval doesn't include DELETE on a repo. The proof is on the right: the upstream never heard of it.",
+      m: "DELETE", p: "github/repos/acme/api", expect: ["403 scope-denied", "upstream saw nothing"],
+      req: "DELETE /github/repos/acme/api HTTP/1.1\nPostern-App-Token: pat_sb_9f2c…",
+      status: "403 Forbidden", res: "<span class=hd>Postern-Error: scope-denied</span>\n\n{ \"code\": \"scope-denied\",\n  \"detail\": \"DELETE github/repos/acme/api isn't in sallyport's approved scopes.\" }",
+      seen: "<span class=hm>Nothing. Postern refused it before it left the machine.</span>", result: "pass" },
+    { g: "Postern saying no", id: "bad", name: "Encoded slash", note: "An encoded slash must not let a path match a wider glob.",
+      m: "GET", p: "github/repos/a%2Fb/x/pulls", expect: ["400 bad-path"],
+      req: "GET /github/repos/a%2Fb/x/pulls HTTP/1.1",
+      status: "400 Bad Request", res: "<span class=hd>Postern-Error: bad-path</span>",
+      seen: "<span class=hm>Nothing.</span>", result: "pass" },
+    { g: "Postern saying no", id: "nocred", name: "No credential", note: "The sandbox seeds jira-empty without a credential, so this always has something to hit.",
+      m: "GET", p: "jira-empty/rest/api/3/myself", expect: ["credential-missing"],
+      req: "GET /jira-empty/rest/api/3/myself HTTP/1.1",
+      status: "503 Service Unavailable", res: "<span class=hd>Postern-Error: credential-missing</span>\n\n{ \"detail\": \"No credential for 'jira-empty'. Add one in Postern (click the tray icon → Connections).\" }",
+      seen: "<span class=hm>Nothing.</span>", result: "pass" },
+    { g: "Postern saying no", id: "notoken", name: "No token", note: "The same request with the Postern-App-Token header stripped.",
+      m: "GET", p: "github/user", expect: ["no-token"],
+      req: "GET /github/user HTTP/1.1\n<span class=hm>(Postern-App-Token removed)</span>",
+      status: "401 Unauthorized", res: "<span class=hd>Postern-Error: no-token</span>",
+      seen: "<span class=hm>Nothing.</span>", result: "pass" },
+  ];
+
+  const $ = (id) => document.getElementById(id);
+  const state = Object.fromEntries(S.map(s => [s.id, s.result]));
+  let current = "json";
+
+  function renderList() {
+    const nav = $("list");
+    nav.innerHTML = "";
+    let group = null;
+    for (const s of S) {
+      if (s.g !== group) {
+        group = s.g;
+        const h = document.createElement("div");
+        h.className = "sp-group";
+        h.textContent = group;
+        nav.appendChild(h);
+      }
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "sp-item";
+      b.setAttribute("aria-current", s.id === current ? "true" : "false");
+      b.innerHTML = `<span class="mark ${state[s.id] || ""}"></span><span>${s.name}</span>`;
+      b.addEventListener("click", () => { current = s.id; renderList(); show(); });
+      nav.appendChild(b);
+    }
+  }
+
+  function show() {
+    const s = S.find(x => x.id === current);
+    $("note").textContent = s.note;
+    $("meth").textContent = s.m;
+    $("path").textContent = s.p;
+    $("expect").innerHTML = "<b>Expect</b>" + s.expect.map(e => `<span class="pill">${e}</span>`).join("");
+    $("req").innerHTML = s.req;
+    $("res").innerHTML = s.res;
+    $("seen").innerHTML = s.seen;
+    const r = state[s.id];
+    const colour = r === "fail" ? "var(--danger)" : r === "pass" ? "var(--ok)" : "var(--muted)";
+    $("status").innerHTML = `<span style="color:${colour}">${s.status}</span>`;
+    $("checks").innerHTML = r === "fail"
+      ? `<b style="color:var(--danger)">Mismatch.</b> ${s.why}`
+      : r === "pass" ? `<b style="color:var(--ok)">Matches.</b> ${s.expect.join(" · ")}`
+      : `<span style="color:var(--muted)">Not run yet.</span>`;
+  }
+
+  $("runAll").addEventListener("click", () => {
+    S.forEach(s => state[s.id] = "run");
+    renderList(); show();
+    S.forEach((s, i) => setTimeout(() => {
+      state[s.id] = s.result;
+      renderList();
+      if (s.id === current) show();
+      if (i === S.length - 1) log(`run all: ${S.filter(x => x.result === "pass").length} matched, ${S.filter(x => x.result === "fail").length} mismatch`, S.some(x => x.result === "fail") ? "e-d" : "e-o");
+    }, 110 * (i + 1)));
+  });
+
+  /* Soak strip: one cell per second of requests. */
+  const N = 60;
+  const cells = [];
+  for (let i = 0; i < N; i++) cells.push("ok");
+  cells[22] = "down"; cells[23] = "retry"; cells[24] = "retry";
+  let mode = "up";          // up | crashed | quit
+  let downTicks = 0;
+  let pid = 41872;
+  let soaking = true;
+
+  function renderStrip() {
+    $("strip").innerHTML = cells.map(c => `<i class="${c === "ok" ? "" : c}"></i>`).join("");
+  }
+  function clock() {
+    const d = new Date(2026, 9, 30, 14, 2, 0);
+    d.setSeconds(d.getSeconds() + ticks);
+    return d.toTimeString().slice(0, 8);
+  }
+  let ticks = 0;
+  function log(text, cls = "") {
+    const div = document.createElement("div");
+    div.className = cls;
+    div.textContent = `${clock()}  ${text}`;
+    const ev = $("events");
+    ev.prepend(div);
+    while (ev.children.length > 12) ev.lastChild.remove();
+  }
+  function setPipe(kind, text) {
+    const p = $("pipePill");
+    p.className = `pill ${kind}`;
+    p.textContent = text;
+  }
+
+  function tick() {
+    ticks++;
+    let cell = "ok";
+    if (mode === "crashed") {
+      downTicks++;
+      if (downTicks === 1) { cell = "down"; log("GET github/user → PosternUnavailableException: pipe gone; retrying", "e-d"); }
+      else if (downTicks === 2) { cell = "retry"; log("retry 2/3: pipe busy (supervisor starting Postern)", "e-r"); }
+      else {
+        cell = "retry";
+        pid += 118;
+        mode = "up";
+        setPipe("ok", `postern-sandbox · pid ${pid}`);
+        log(`pipe back, pid ${pid}; same token accepted, no prompt`, "e-o");
+      }
+    } else if (mode === "quit") {
+      cell = "down";
+      if (downTicks++ % 4 === 0) log("GET github/user → Postern isn't running (nothing on postern-sandbox)", "e-d");
+    }
+    cells.push(cell);
+    cells.shift();
+    renderStrip();
+  }
+
+  let timer = setInterval(() => soaking && tick(), 1000);
+
+  $("soakBtn").addEventListener("click", () => {
+    soaking = !soaking;
+    $("soakBtn").textContent = soaking ? "Pause soak" : "Resume soak";
+  });
+
+  $("crashBtn").addEventListener("click", () => {
+    if (mode !== "up") return;
+    mode = "crashed"; downTicks = 0;
+    setPipe("down", `postern-sandbox · pid ${pid} gone`);
+    log(`crash: killed pid ${pid} (checked: it serves postern-sandbox)`, "e-d");
+    if (!soaking) { soaking = true; $("soakBtn").textContent = "Pause soak"; }
+  });
+
+  $("quitBtn").addEventListener("click", () => {
+    if (mode === "quit") {
+      mode = "up";
+      pid += 211;
+      setPipe("ok", `postern-sandbox · pid ${pid}`);
+      $("quitBtn").textContent = "Quit Postern";
+      log(`started Postern (Sandbox), pid ${pid}; token still valid`, "e-o");
+      return;
+    }
+    if (mode !== "up") return;
+    mode = "quit"; downTicks = 0;
+    setPipe("down", "postern-sandbox · not running");
+    $("quitBtn").textContent = "Start Postern";
+    log("quit: asked Postern to exit; no supervisor, so it stays down", "e-r");
+  });
+
+  renderList();
+  show();
+  renderStrip();
+  log("earlier: crash drill, pid 41754 → 41872 in 2.1 s, no prompt", "e-o");
+  log("soak started: GET github/user every 1 s", "");
+})();
+</script>

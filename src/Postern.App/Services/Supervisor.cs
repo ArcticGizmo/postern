@@ -21,19 +21,21 @@ internal static class Supervisor
     public static int Run(AppArgs args, Action<string> log)
     {
         using var single = new Mutex(initiallyOwned: true, $@"Local\Postern-Supervisor-{args.PipeName}", out var first);
-        if (!first)
+        if (!first && !(args.ResetSandbox && Program.WaitForTurn(single)))
         {
             log("Another supervisor is already running for this pipe; exiting.");
             return 0;
         }
 
         var crashes = new Queue<DateTimeOffset>();
+        var firstStart = true;
         while (true)
         {
             var started = DateTimeOffset.UtcNow;
             var psi = new ProcessStartInfo(Environment.ProcessPath!) { UseShellExecute = false };
-            foreach (var a in args.ForChild())
+            foreach (var a in args.ForChild(firstStart))
                 psi.ArgumentList.Add(a);
+            firstStart = false;
             psi.Environment[Program.SupervisedVariable] = "1";
 
             using var child = Process.Start(psi)!;
