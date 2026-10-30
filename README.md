@@ -124,7 +124,9 @@ $cli = ".\src\Postern.Cli\bin\Debug\net10.0-windows\postern-cli.exe"
 
 Debug builds run as a separate **Postern (Dev)**, with a pink icon, its own pipe (`postern-dev`), its own data and its own credentials, so they can run next to an installed copy. See [`docs/releasing.md`](docs/releasing.md).
 
-`Postern.exe` options: `--headless` (no tray; registrations are denied), `--supervise` (restart on crash), `--pipe NAME` (default `postern`, or `postern-dev` for a Debug build), `--data-dir DIR` (default `%LOCALAPPDATA%\Postern.Data`, or `Postern.Dev`), and in Debug builds only `--dev-auto-approve name1,name2` for unattended tests.
+`Postern.exe` options: `--headless` (no tray; registrations are denied), `--supervise` (restart on crash), `--sandbox` (run as Postern (Sandbox), below), `--reset-sandbox` (with `--sandbox`: start from a fresh sandbox), `--pipe NAME` (default `postern`, or `postern-dev` for a Debug build), `--data-dir DIR` (default `%LOCALAPPDATA%\Postern.Data`, or `Postern.Dev`), and in Debug builds only `--dev-auto-approve name1,name2` for unattended tests.
+
+**Postern (Sandbox)** is a third profile for testing against, in a sand-coloured icon: pipe `postern-sandbox`, data in `%LOCALAPPDATA%\Postern.Sandbox`, credentials under `postern-sandbox:`. It only sends requests to 127.0.0.1 or localhost (anything else is refused with `sandbox-host`), and it refuses credentials that look like real tokens. A new sandbox starts with connections for GitHub, Jira, Slack, Octopus and Anthropic, all pointing at a stand-in on `127.0.0.1:5599`, with made-up credentials. `POSTERN_SANDBOX=1` does the same as `--sandbox` for postern-cli and the other tools. See [`docs/testbed.md`](docs/testbed.md).
 
 To see the windows without launching the tray, `dotnet run --project tools\Postern.Snapshots` renders each one offscreen, with made-up data, to `captures/`.
 

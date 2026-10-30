@@ -30,10 +30,11 @@ internal sealed class ProxyEndpoint(
     public const string TokenHeader = "Postern-App-Token";
 
     // One upstream client for all providers. No redirects (never carry auth to another host), no cookies, no
-    // decompression (bodies go back untouched), no trace headers leaking to the provider. System proxy honoured.
+    // decompression (bodies go back untouched), no trace headers leaking to the provider. System proxy honoured, except
+    // in the sandbox: a proxy that doesn't bypass loopback would carry its requests off the machine.
     readonly HttpMessageInvoker _upstream = new(new SocketsHttpHandler
     {
-        UseProxy = true,
+        UseProxy = !connections.LoopbackOnly,
         AllowAutoRedirect = false,
         AutomaticDecompression = DecompressionMethods.None,
         UseCookies = false,
@@ -62,6 +63,13 @@ internal sealed class ProxyEndpoint(
         if (!decision.Allowed)
         {
             await Deny(context, audited, decision.App, decision.Status, decision.Code, decision.Detail);
+            return;
+        }
+
+        // Saving refuses these too, but providers.json can be edited while Postern isn't running.
+        if (connections.OutsideSandbox(definition) is { } outside)
+        {
+            await Deny(context, audited, decision.App, 403, "sandbox-host", outside);
             return;
         }
 

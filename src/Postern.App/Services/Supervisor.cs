@@ -28,12 +28,14 @@ internal static class Supervisor
         }
 
         var crashes = new Queue<DateTimeOffset>();
+        var firstStart = true;
         while (true)
         {
             var started = DateTimeOffset.UtcNow;
             var psi = new ProcessStartInfo(Environment.ProcessPath!) { UseShellExecute = false };
-            foreach (var a in args.ForChild())
+            foreach (var a in args.ForChild(firstStart))
                 psi.ArgumentList.Add(a);
+            firstStart = false;
             psi.Environment[Program.SupervisedVariable] = "1";
 
             using var child = Process.Start(psi)!;

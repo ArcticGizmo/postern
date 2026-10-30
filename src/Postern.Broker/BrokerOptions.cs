@@ -21,6 +21,12 @@ public sealed class BrokerOptions
 
     public TimeSpan ApprovalTimeout { get; init; } = Postern.Core.Apps.Registrations.DefaultApprovalTimeout;
 
+    /// <summary>
+    /// The sandbox's fence: connections may only point at loopback, and requests through one that doesn't are refused
+    /// with <c>sandbox-host</c>. Upstream calls also skip the system proxy, so nothing leaves the machine.
+    /// </summary>
+    public bool LoopbackOnly { get; init; }
+
     // Not %LOCALAPPDATA%\Postern: that's the Velopack install root, which an uninstall deletes wholesale.
     public static string DefaultDataDirectory =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Postern.Data");

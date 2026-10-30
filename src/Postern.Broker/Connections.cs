@@ -14,7 +14,7 @@ public sealed class Connections
     readonly Lock _gate = new();
     IReadOnlyDictionary<string, ProviderDefinition> _byName;
 
-    internal Connections(IReadOnlyList<ProviderDefinition> initial, string dataDirectory, ICredentialStore credentials, string? loadError)
+    internal Connections(IReadOnlyList<ProviderDefinition> initial, string dataDirectory, ICredentialStore credentials, string? loadError, bool loopbackOnly = false)
     {
         foreach (var connection in initial)
             connection.Validate();
@@ -22,11 +22,21 @@ public sealed class Connections
         _dataDirectory = dataDirectory;
         _credentials = credentials;
         LoadError = loadError;
+        LoopbackOnly = loopbackOnly;
     }
 
     public IReadOnlyList<ProviderDefinition> All => [.. _byName.Values.OrderBy(p => p.Name, StringComparer.Ordinal)];
 
     public ProviderDefinition? Find(string name) => _byName.GetValueOrDefault(name);
+
+    /// <summary>The sandbox: see <see cref="BrokerOptions.LoopbackOnly"/>.</summary>
+    public bool LoopbackOnly { get; }
+
+    /// <summary>Why the sandbox won't use <paramref name="connection"/>, or null when it may (or this isn't the sandbox).</summary>
+    public string? OutsideSandbox(ProviderDefinition connection) =>
+        LoopbackOnly && !connection.BaseUrl.IsLoopback
+            ? $"This is the sandbox Postern, which only sends requests to 127.0.0.1 or localhost, and '{connection.Name}' points at {connection.Origin}."
+            : null;
 
     /// <summary>Why providers.json couldn't be used at startup (Postern then runs with the built-ins only), or null.</summary>
     public string? LoadError { get; private set; }
@@ -43,6 +53,8 @@ public sealed class Connections
     public void Save(string json)
     {
         var next = ProvidersFile.Resolve(ProvidersFile.Parse(json));
+        if (next.Select(OutsideSandbox).OfType<string>().FirstOrDefault() is { } outside)
+            throw new ArgumentException(outside);
         lock (_gate)
         {
             ProvidersFile.Write(_dataDirectory, json);

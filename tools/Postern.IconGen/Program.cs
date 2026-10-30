@@ -9,7 +9,10 @@ using Svg;
 //                                                 the installed copy's window and tray icon
 //   src/Postern.App/Assets/postern-dev.ico        the same in Postern (Dev)'s pink
 //   src/Postern.App/Assets/postern-attention.ico  the same in amber, while an approval waits
-//   src/Postern.App/Assets/icon.png, icon-dev.png 256x256 PNG — the in-app logo
+//   src/Postern.App/Assets/postern-sandbox.ico    the same in Postern (Sandbox)'s sand
+//   src/Postern.App/Assets/icon.png, icon-dev.png, icon-sandbox.png
+//                                                 256x256 PNG — the in-app logo
+//   tools/Postern.Sallyport/Assets/sallyport.ico  the same in Sallyport's blue
 //   landing-icon.png                              512x512 PNG — the README header logo
 //
 // Re-run after editing postern.svg:  tools/gen-icons.ps1
@@ -29,13 +32,17 @@ Console.WriteLine($"Source: {svgPath}");
 var brand = SvgDocument.Open(svgPath);
 var dev = Filled(SvgDocument.Open(svgPath), Color.FromArgb(0xFF, 0x4F, 0xA3));
 var attention = Filled(SvgDocument.Open(svgPath), Color.FromArgb(0xF5, 0xA5, 0x24));
+// Sand for Postern (Sandbox), paler than the amber so the two can't be confused at 16px; blue for Sallyport, which is
+// an app talking to Postern rather than a Postern.
+var sandbox = Filled(SvgDocument.Open(svgPath), Color.FromArgb(0xC8, 0xB2, 0x7A));
+var sallyport = Filled(SvgDocument.Open(svgPath), Color.FromArgb(0x7A, 0xA7, 0xF5));
 
 // The tile sits inside a margin of a few units that isn't a whole pixel at any icon size, so every edge of it would land
 // mid-pixel and blur, which shows worst at 16px in the tray. Cropping the viewBox to the drawn content puts the tile's
 // edges on the frame's edges at every size.
 var content = ContentBox(brand);
 Console.WriteLine($"Content: {content.X:0.00},{content.Y:0.00} {content.Width:0.00}x{content.Height:0.00} of a {brand.ViewBox.Width}x{brand.ViewBox.Height} viewBox");
-foreach (var doc in new[] { brand, dev, attention })
+foreach (var doc in new[] { brand, dev, attention, sandbox, sallyport })
     CropTo(doc, content);
 
 // The tray asks Avalonia for 16px times the display scale and the taskbar for 24px times it, and Avalonia takes the
@@ -48,8 +55,14 @@ Directory.CreateDirectory(assetsDir);
 WriteIco(brand, Path.Combine(assetsDir, "postern.ico"), icoSizes);
 WriteIco(dev, Path.Combine(assetsDir, "postern-dev.ico"), icoSizes);
 WriteIco(attention, Path.Combine(assetsDir, "postern-attention.ico"), icoSizes);
+WriteIco(sandbox, Path.Combine(assetsDir, "postern-sandbox.ico"), icoSizes);
 WritePng(brand, Path.Combine(assetsDir, "icon.png"), 256);
 WritePng(dev, Path.Combine(assetsDir, "icon-dev.png"), 256);
+WritePng(sandbox, Path.Combine(assetsDir, "icon-sandbox.png"), 256);
+
+string sallyportAssets = Path.Combine(repoRoot, "tools", "Postern.Sallyport", "Assets");
+Directory.CreateDirectory(sallyportAssets);
+WriteIco(sallyport, Path.Combine(sallyportAssets, "sallyport.ico"), icoSizes);
 WritePng(brand, Path.Combine(repoRoot, "landing-icon.png"), 512);
 
 Console.WriteLine("Done.");

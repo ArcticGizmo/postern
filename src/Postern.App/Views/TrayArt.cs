@@ -23,10 +23,20 @@ internal static class TrayArt
 
     public static WindowIcon WindowIcon(bool attention = false) => attention
         ? _attention ??= new WindowIcon(Open("postern-attention.ico"))
-        : _normal ??= new WindowIcon(Open(Broker.Profile.IsDev ? "postern-dev.ico" : "postern.ico"));
+        : _normal ??= new WindowIcon(Open(Broker.Profile.Kind switch
+        {
+            Broker.ProfileKind.Dev => "postern-dev.ico",
+            Broker.ProfileKind.Sandbox => "postern-sandbox.ico",
+            _ => "postern.ico",
+        }));
 
     /// <summary>The normal icon as an image, for the main window's nav header.</summary>
-    public static Bitmap Logo() => _logo ??= new Bitmap(Open(Broker.Profile.IsDev ? "icon-dev.png" : "icon.png"));
+    public static Bitmap Logo() => _logo ??= new Bitmap(Open(Broker.Profile.Kind switch
+    {
+        Broker.ProfileKind.Dev => "icon-dev.png",
+        Broker.ProfileKind.Sandbox => "icon-sandbox.png",
+        _ => "icon.png",
+    }));
 
     static Stream Open(string asset) => AssetLoader.Open(new Uri($"avares://Postern/Assets/{asset}"));
 }
