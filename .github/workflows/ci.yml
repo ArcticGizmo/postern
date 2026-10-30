@@ -52,6 +52,18 @@ jobs:
         shell: powershell
         run: powershell -NoProfile -ExecutionPolicy Bypass -File tools\test-install.ps1
 
+      # Every Sallyport scenario through a throwaway Postern (Sandbox) to fake-upstream, all on loopback. Debug builds,
+      # because only they can approve Sallyport without a person there (--dev-auto-approve).
+      - name: Test bed (Sallyport scenarios)
+        shell: powershell
+        run: |
+          foreach ($project in 'src\Postern.App', 'tools\Postern.FakeUpstream', 'tools\Postern.Sallyport') {
+            dotnet build $project -c Debug
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          }
+          powershell -NoProfile -ExecutionPolicy Bypass -File scripts\testbed-run.ps1
+          exit $LASTEXITCODE
+
       - name: Upload test results
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
