@@ -7,10 +7,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+---
+
+## [v0.1.1] - 2026-10-30
+
 - One Postern window with a page per job, instead of a window per tray item
 - Connections: built-in templates for 14 services, or your own as JSON
 - Several accounts per service (`github` and `github-work`, side by side)
 - A credential only goes to the address it was entered for
+- A broken `providers.json` no longer stops Postern starting
 - How it works page, with copy-and-paste client code
 - Changelog page, and a "What's new" window after an update
 - New icon (a gate, unsurprisingly)
