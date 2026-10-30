@@ -105,15 +105,33 @@ internal static class Program
         return 0;
     }
 
-    public static BrokerRuntime CreateBroker(IApprovalPrompt prompt) => BrokerRuntime.Create(
-        new BrokerOptions
+    public static BrokerRuntime CreateBroker(IApprovalPrompt prompt)
+    {
+        // A bad providers.json mustn't stop Postern starting: the app is where it gets fixed. Its connections stay
+        // unavailable (fail closed) until then.
+        IReadOnlyList<Core.Providers.ProviderDefinition> providers;
+        string? loadError = null;
+        try
         {
-            PipeName = Args.PipeName,
-            DataDirectory = Args.DataDirectory,
-            Providers = BrokerOptions.LoadProviders(Args.DataDirectory),
-        },
-        prompt,
-        new BrokerOverrides { Logging = builder => builder.AddProvider(Logs) });
+            providers = BrokerOptions.LoadProviders(Args.DataDirectory);
+        }
+        catch (Exception ex) when (ex is ArgumentException or IOException)
+        {
+            providers = [Core.Providers.ProviderDefinition.GitHub];
+            loadError = ex.Message;
+        }
+
+        return BrokerRuntime.Create(
+            new BrokerOptions
+            {
+                PipeName = Args.PipeName,
+                DataDirectory = Args.DataDirectory,
+                Providers = providers,
+                ProvidersLoadError = loadError,
+            },
+            prompt,
+            new BrokerOverrides { Logging = builder => builder.AddProvider(Logs) });
+    }
 
     public static IApprovalPrompt WithDevAutoApprove(IApprovalPrompt prompt, ILogger log)
     {

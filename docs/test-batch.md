@@ -15,7 +15,9 @@ Branches: **postern** `poc/walking-skeleton`; **perch** `spike/postern-transport
 - **Session D** (~20 min, then a day or two in the background): the approval queue, the elevation guard, and a
   stack of small shadow apps comparing gh with Postern.
 - **Session E** (~30 min): install from a locally built release next to Postern (Dev), then update through
-  Tray → Check for updates, using a local feed because nothing is on GitHub yet. See `docs/releasing.md`.
+  the Updates page, using a local feed because nothing is on GitHub yet. See `docs/releasing.md`.
+- **Session F** (~15 min): connections. A second GitHub account, a template with two fields, a custom
+  connection written as JSON, and a credential refusing to follow a repointed connection. See `docs/connections.md`.
 
 ---
 
@@ -69,15 +71,17 @@ Branches: **postern** `poc/walking-skeleton`; **perch** `spike/postern-transport
 ### A2. Tray app first run
 
 - [ ] **A2.1** `& $postern`
-  **Expect:** within about 2 s, a teal arched-gate icon in the tray (it may be in the ^ overflow), and the
-  **Credentials** window opens by itself.
+  **Expect:** within about 2 s, a pink tower-and-keyhole icon in the tray (the dev colour; it may be in
+  the ^ overflow), and the
+  Postern window opens by itself on **Connections**, with an amber *missing* badge beside it in the left nav.
   Result:
 
-- [ ] **A2.2** In Credentials, the github row says *missing* in amber. Click **Set**, paste the PAT, click **Save**.
-  **Expect:** *stored* in green, with **Replace** and **Remove** buttons. Nothing shows the token.
+- [ ] **A2.2** In Connections, the github row says *missing* in amber. Click **Set**, paste the PAT, click **Save**.
+  **Expect:** *stored* in green, with **Replace** and **Remove** buttons, and the *missing* badge gone. Nothing shows
+  the token.
   Result:
 
-- [ ] **A2.3** Close the window, then reopen it from the tray (Credentials…).
+- [ ] **A2.3** Close the window, then click the tray icon and pick **Connections** in the nav.
   **Expect:** still *stored*.
   Result:
 
@@ -86,11 +90,12 @@ Branches: **postern** `poc/walking-skeleton`; **perch** `spike/postern-transport
   Result:
 
 - [ ] **A2.5** Right-click the tray icon.
-  **Expect:** `Postern 0.1.0`, Apps…, Credentials…, Audit log…, Start at login, Open data folder, Quit Postern.
+  **Expect:** `Postern 0.1.0`, Open Postern…, Quit Postern. No update item unless one has been found.
   Result:
 
 - [ ] **A2.6** Left-click the tray icon.
-  **Expect:** the Apps window opens, saying no apps have access.
+  **Expect:** the Postern window opens on **Apps**, saying no apps have access. **General** shows Start at login,
+  the data and logs folders (each with Open), the version and the pipe. Esc closes the window.
   Result:
 
 - [ ] **A2.7** `& $cli status`
@@ -125,7 +130,7 @@ Branches: **postern** `poc/walking-skeleton`; **perch** `spike/postern-transport
   Result:
 
 - [ ] **A3.4** Click **Allow**.
-  **Expect:** the terminal prints `Approved: Approved.`, the icon goes back to teal, and the tooltip says 1 app
+  **Expect:** the terminal prints `Approved: Approved.`, the icon goes back to pink, and the tooltip says 1 app
   is allowed.
   Result:
 
@@ -244,7 +249,7 @@ Branches: **postern** `poc/walking-skeleton`; **perch** `spike/postern-transport
 
 ### A7. Audit log and secret hygiene
 
-- [ ] **A7.1** Open Tray → Audit log.
+- [ ] **A7.1** Open Postern → Audit log.
   **Expect at the top:** `github/core: N/5000 left…`, and probably a `github/graphql` line.
   Result:
 
@@ -301,13 +306,13 @@ Do these before Session C. Perch's traffic would otherwise muddy the rate-limit 
   Remove-Item "$env:LOCALAPPDATA\Postern.Client\node-spike.postern.plain-token"
   ```
 
-- [ ] **A8.6** In the Apps window, revoke `poller-spike`, `octokit-spike` and `node-spike`.
+- [ ] **A8.6** On the Apps page, revoke `poller-spike`, `octokit-spike` and `node-spike`.
 
 ---
 
 ## Session B: lifecycle and accounts
 
-- [ ] **B1** Tray → **Start at login** (it gets a tick). Then run:
+- [ ] **B1** Postern → General → tick **Start Postern when I sign in to Windows**. Then run:
   ```powershell
   (Get-ItemProperty HKCU:\Software\Microsoft\Windows\CurrentVersion\Run).Postern
   ```
@@ -375,7 +380,7 @@ Shadow mode compares answers, so Postern's PAT needs the same reach as your gh l
   **Report:** which route the org allowed. That's a finding for the scope doc.
   Result:
 
-- [ ] **C0.2** Store it: Tray → Credentials → Replace.
+- [ ] **C0.2** Store it: Postern → Connections → github → Replace.
 
 ### C1. Run Perch in shadow mode
 
@@ -428,7 +433,7 @@ Shadow mode compares answers, so Postern's PAT needs the same reach as your gh l
   **Expect:** the alerts strip and PR glyphs work as before. Perch now holds no GitHub token.
   Result:
 
-- [ ] **C4.2** Revoke `perch` in Postern's Apps window.
+- [ ] **C4.2** Revoke `perch` on Postern's Apps page.
   **Expect:** the strip shows "Postern refused: app-revoked", and Perch doesn't crash.
   Result:
 
@@ -464,7 +469,7 @@ Shadow mode compares answers, so Postern's PAT needs the same reach as your gh l
   ```
   **Expect:** the build succeeds, 102 tests pass, and the tray icon is back as **Postern (Dev)**. Debug builds are
   now a separate profile (pipe `postern-dev`, data in `%LOCALAPPDATA%\Postern.Dev`, credentials under
-  `postern-dev:`), so it starts fresh: the Credentials window opens. Paste your PAT there. Earlier approvals stay
+  `postern-dev:`), so it starts fresh: Postern opens on Connections. Paste your PAT there. Earlier approvals stay
   with the old data and aren't carried over. The Debug `$cli` and the shadow apps talk to the dev profile on their own.
   Result:
 
@@ -576,7 +581,7 @@ a new terminal, in the repo folder.
 ### E0. Clear the way for a fresh install
 
 - [ ] **E0.1** If a Postern from before Session D is still running (its tray says **Postern**, not
-  **Postern (Dev)**), untick its Start at login, then Tray → Quit.
+  **Postern (Dev)**), untick Start at login on its General page, then Tray → Quit.
   Result:
 
 - [ ] **E0.2** `%LOCALAPPDATA%\Postern` still holds the data from the builds before Session D, and it's where the
@@ -589,7 +594,7 @@ a new terminal, in the repo folder.
   will find it there. If you want the install to start without one, delete it first: `cmdkey /delete:postern:github:default`.
   Result:
 
-- [ ] **E0.3** In **Postern (Dev)**: Tray → Check for updates….
+- [ ] **E0.3** In **Postern (Dev)**: open the Updates page.
   **Expect:** "This copy can't update itself", showing the `bin\Debug` path.
   Result:
 
@@ -601,9 +606,9 @@ a new terminal, in the repo folder.
   Get-FileHash .\releases\Postern-win-Setup.exe; Select-String .\releases\SHA256SUMS.txt -Pattern Setup
   .\releases\Postern-win-Setup.exe
   ```
-  **Expect:** the two hashes match (case aside). There's no admin prompt. A second tray icon appears, with
-  **Postern 0.1.0** in its menu header, next to Postern (Dev). The Start menu has a Postern entry, and there's **no**
-  desktop shortcut. Add your PAT under Credentials if it asks.
+  **Expect:** the two hashes match (case aside). There's no admin prompt. A second, purple tray icon appears, with
+  **Postern 0.1.0** in its menu header, next to Postern (Dev)'s pink one. The Start menu has a Postern entry, and there's **no**
+  desktop shortcut. Add your PAT under Connections if it asks.
   Result:
 
 - [ ] **E1.2** Both profiles answer, each on its own pipe:
@@ -629,7 +634,7 @@ a new terminal, in the repo folder.
   **Expect:** `35 passed, 0 failed`, with no FAIL or SKIP lines.
   Result:
 
-- [ ] **E1.5** Tray (the installed Postern) → Check for updates….
+- [ ] **E1.5** In the installed Postern: open the Updates page.
   **Expect:** "Postern couldn't check for updates." with a not-found error, because
   `github.com/ArcticGizmo/postern` has no releases yet. That's the right failure.
   Result:
@@ -644,12 +649,12 @@ a new terminal, in the repo folder.
   ```powershell
   $env:POSTERN_UPDATE_FEED = "$PWD\releases"; & "$env:LOCALAPPDATA\Postern\current\Postern.exe"
   ```
-  **Expect:** about 30 seconds after start, the tray item changes to **Update to 0.1.1…**, and the tooltip says
-  "Update 0.1.1 available".
+  **Expect:** about 30 seconds after start, an **Update to 0.1.1…** item appears in the tray menu, the Updates nav
+  item gets a *new* badge, and the tooltip says "Update 0.1.1 available".
   Result:
 
-- [ ] **E2.2** Click **Update to 0.1.1…**.
-  **Expect:** "Postern 0.1.1 is available", the three restart bullets, and an amber line naming the local folder.
+- [ ] **E2.2** Click **Update to 0.1.1…** in the tray menu.
+  **Expect:** Postern opens on Updates: "Postern 0.1.1 is available", the three restart bullets, and an amber line naming the local folder.
   There's no Release notes button for a local feed.
   Result:
 
@@ -659,9 +664,16 @@ a new terminal, in the repo folder.
   `& $icli call --name e-test GET github/user` still works with no new prompt. Postern (Dev) carries on throughout.
   Result:
 
+- [ ] **E2.4** What's new. A local build only has a section to show if `CHANGELOG.md` has one for its version, so
+  before E2.1's `publish.ps1 0.1.1`, add a `## [v0.1.1] - <today>` section with a bullet or two (don't commit it).
+  **Expect:** after the restart in E2.3, a "What's new in Postern" window saying "Updated from v0.1.0 to v0.1.1."
+  with just that section. It isn't topmost. **Don't show again** closes it, and the installed copy's Changelog page
+  then has the checkbox unticked. Quit and start the installed copy again: no window. Revert `CHANGELOG.md`.
+  Result:
+
 ### E3. Update under the supervisor
 
-- [ ] **E3.1** In the installed copy: Tray → tick **Start at login**. Then:
+- [ ] **E3.1** In the installed copy: General → tick **Start Postern when I sign in to Windows**. Then:
   ```powershell
   (Get-ItemProperty HKCU:\Software\Microsoft\Windows\CurrentVersion\Run).Postern
   ```
@@ -701,6 +713,61 @@ a new terminal, in the repo folder.
 
 ---
 
+## Session F: connections
+
+In Postern (Dev), started with `.\run.cmd`. `$cli` as in A0.7.
+
+- [ ] **F1** Connections → **Add connection** → GitHub. Name it `github-two`, click **Add**.
+  **Expect:** the add dialog closes and a "Set the credential for github-two" dialog opens over the window, showing
+  `https://api.github.com` as where it's sent. Paste the same test PAT, **Save**: the card says *stored*. Nothing
+  on the page moved or expanded at any point.
+  Result:
+
+- [ ] **F2** Use it with no restart:
+  ```powershell
+  & $cli register --name two --scope "GET github-two/user"
+  & $cli call --name two GET github-two/user | Select-String '"type"'
+  ```
+  **Expect:** the prompt's **Through** section says `github-two  GitHub · api.github.com`. After Allow, the call
+  prints `"type": "User"`.
+  Result:
+
+- [ ] **F3** **Add connection** → Jira Cloud. Leave **Site** empty and click **Add**.
+  **Expect:** "Site is required." under the fields, and the dialog stays open. Type `evil.example/x` instead.
+  **Expect:** a message that it should be a single name. Then press **Esc**: the dialog closes and nothing was added.
+  Result:
+
+- [ ] **F4** **Add connection** → Datadog, keep the defaults, **Add**.
+  **Expect:** the credential dialog has two inputs, API key and Application key. Type anything into one only and
+  **Save**. **Expect:** "Not saved: Application key is empty." and the dialog stays open with what you typed.
+  **Cancel**, then the card's **Remove**: a confirmation dialog explains the credential goes too. **Remove**; the card goes.
+  Result:
+
+- [ ] **F5** **Edit as JSON**. Change `github-two`'s entry to
+  `{ "name": "github-two", "template": "github-enterprise", "baseUrl": "https://github.example.com/api/v3" }`
+  and **Save**.
+  **Expect:** the card says the credential was entered for `https://api.github.com` and the connection now points
+  at `https://github.example.com`. Then `& $cli call --name two GET github-two/user` fails with
+  `credential-invalid`, and nothing reaches github.example.com.
+  Result:
+
+- [ ] **F6** **Edit as JSON**, delete a closing `]`, **Save**.
+  **Expect:** a "Not valid JSON" message under the editor, the dialog still open, and the cards behind it unchanged. **Cancel**.
+  Result:
+
+- [ ] **F7** Remove `github-two`. Then `cmdkey /list | Select-String github-two`.
+  **Expect:** no output: its credential went with it. `& $cli credential list` no longer lists it.
+  Result:
+
+- [ ] **F8** **How it works**, with `github` picked. Copy the Node example into `my-script.mjs`, change
+  `/repos/OWNER/REPO/pulls` (both places it appears, and the scope) to a repo you can see, and run `node my-script.mjs`.
+  **Expect:** an approval prompt for `my-script` whose **Through** line says `github  GitHub · api.github.com`, then
+  `200` and the start of a JSON array. Pick `jira` (or any other connection): the diagram, wire, addresses and code
+  all switch to it, and the page below the picker keeps its layout.
+  Result:
+
+---
+
 ## Decisions
 
 | Question | Decision | Where |
@@ -716,4 +783,7 @@ a new terminal, in the repo folder.
 | One-liner installer? | **Yes**, `irm …/install.ps1 \| iex`, verifying Setup against `SHA256SUMS.txt` and refusing an elevated shell | `install.ps1`, `tools/test-install.ps1` |
 | Should Postern itself run elevated? | **No.** A UAC-elevated start shows a warning and exits with 5. UAC-off machines aren't refused (there's no other token to use) | `Elevation` |
 | Graph via WAM (S5) | **Deferred.** Internal approval for an Entra app registration will take time | `docs/spike-plan.md` S5 |
+| Several accounts for one service | **Named connections.** Each account is its own connection (`github`, `github-work`) with its own credential; scopes name the connection. Explicit, and one app can use several | `Connections`, `ProviderTemplates` |
+| Can a credential follow a repointed connection? | **No.** Each credential records the origin it was entered for, and the proxy only sends it there. Repointing means entering it again | `ProviderDefinition.DecodeCredential` |
+| Where are connections edited? | **In the app, in dialogs:** templates through a form, everything else as JSON in an editor that validates before saving. Every change opens a modal, so the page never reflows. Changes apply without a restart | `ConnectionsPage`, `Dialog` |
 | Merge order | **No merging during greenfield work.** Postern keeps building on `poc/walking-skeleton`; Perch stays on `spike/postern-transport` | |

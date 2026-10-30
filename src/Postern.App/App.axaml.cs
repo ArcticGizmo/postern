@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -22,10 +21,7 @@ public partial class App : Application
     IClassicDesktopStyleApplicationLifetime? _desktop;
     TrayIcon? _tray;
     NativeMenuItem? _updateItem;
-    AppsWindow? _apps;
-    CredentialsWindow? _credentials;
-    AuditWindow? _audit;
-    UpdateWindow? _updates;
+    MainWindow? _main;
     int _pendingPrompts;
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
@@ -40,6 +36,8 @@ public partial class App : Application
             _log = Program.Logs.CreateLogger("Postern.App");
 
             _broker = Program.CreateBroker(Program.WithDevAutoApprove(_prompt, _log));
+            var connections = _broker.Connections;
+            _prompt.DescribeConnection = name => connections.Find(name) is { } c ? $"{c.TemplateName} · {c.BaseUrl.Authority}" : null;
             _broker.Registrations.Changed += () => Dispatcher.UIThread.Post(UpdateTray);
             _prompt.PendingChanged += count =>
             {
@@ -64,7 +62,8 @@ public partial class App : Application
             UpdateTray();
             _updater.Start();
             if (_broker.Credentials.Read(Core.Providers.ProviderDefinition.GitHub.CredentialTarget) is null)
-                OpenCredentials(); // first run: nothing works until there's a credential
+                Open(MainWindow.ConnectionsKey); // first run: nothing works until there's a credential
+            ShowWhatsNewAfterUpdate();
         }
         catch (PipeInUseException ex)
         {
@@ -80,6 +79,48 @@ public partial class App : Application
             Environment.ExitCode = Program.ExitBrokerFailed;
             desktop.Shutdown(Program.ExitBrokerFailed);
         }
+    }
+
+    // The version is recorded on every start, not just after an update, so a fresh install or a downgrade shows
+    // nothing. If it can't be recorded, nothing is shown either: it would otherwise come back on every start.
+    void ShowWhatsNewAfterUpdate()
+    {
+        var dataDir = Program.Args.DataDirectory;
+        var settings = AppSettings.Load(dataDir);
+        var lastSeen = settings.LastSeenVersion;
+        if (lastSeen == BrokerRuntime.Version)
+            return;
+        settings.LastSeenVersion = BrokerRuntime.Version;
+        try
+        {
+            settings.Save(dataDir);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _log.LogWarning(ex, "Couldn't record the version in settings.json");
+            return;
+        }
+
+        if (lastSeen is null || !settings.ShowChangelogAfterUpdate || ChangelogMarkdown.LoadEmbedded() is not { } markdown)
+            return;
+        var sections = Core.Changelog.ChangelogParser.UnseenSince(markdown, lastSeen, BrokerRuntime.Version);
+        if (sections.Count == 0)
+            return;
+        var window = new WhatsNewWindow(lastSeen, sections, () =>
+        {
+            try
+            {
+                var latest = AppSettings.Load(dataDir);
+                latest.ShowChangelogAfterUpdate = false;
+                latest.Save(dataDir);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                _log.LogWarning(ex, "Couldn't save the changelog preference");
+            }
+        });
+        window.Show();
+        window.Activate();
     }
 
     void StopBroker()
@@ -98,29 +139,12 @@ public partial class App : Application
     {
         var header = new NativeMenuItem($"Postern{Profile.DisplaySuffix} {BrokerRuntime.Version}{PipeSuffix}") { IsEnabled = false };
 
-        var apps = new NativeMenuItem("Apps…");
-        apps.Click += (_, _) => OpenApps();
-        var credentials = new NativeMenuItem("Credentials…");
-        credentials.Click += (_, _) => OpenCredentials();
-        var audit = new NativeMenuItem("Audit log…");
-        audit.Click += (_, _) => OpenAudit();
+        var open = new NativeMenuItem("Open Postern…");
+        open.Click += (_, _) => Open(MainWindow.AppsKey);
 
-        var autostart = new NativeMenuItem("Start at login")
-        {
-            ToggleType = MenuItemToggleType.CheckBox,
-            IsChecked = Autostart.IsEnabled(),
-        };
-        autostart.Click += (_, _) =>
-        {
-            Autostart.Apply(!Autostart.IsEnabled(), Program.Args);
-            autostart.IsChecked = Autostart.IsEnabled();
-        };
-
-        var folder = new NativeMenuItem("Open data folder");
-        folder.Click += (_, _) => Process.Start(new ProcessStartInfo("explorer.exe", $"\"{Program.Args.DataDirectory}\"") { UseShellExecute = true });
-
-        _updateItem = new NativeMenuItem("Check for updates…");
-        _updateItem.Click += (_, _) => OpenUpdates();
+        // Only there when the background check has found something; checking by hand is on the Updates page.
+        _updateItem = new NativeMenuItem("Update…") { IsVisible = false };
+        _updateItem.Click += (_, _) => Open(MainWindow.UpdatesKey);
 
         var quit = new NativeMenuItem("Quit Postern");
         quit.Click += (_, _) => desktop.Shutdown(0);
@@ -129,19 +153,14 @@ public partial class App : Application
         {
             header,
             new NativeMenuItemSeparator(),
-            apps,
-            credentials,
-            audit,
-            new NativeMenuItemSeparator(),
-            autostart,
-            folder,
+            open,
             _updateItem,
             new NativeMenuItemSeparator(),
             quit,
         };
 
         _tray = new TrayIcon { Icon = TrayArt.WindowIcon(), Menu = menu, IsVisible = true, ToolTipText = "Postern: starting" };
-        _tray.Clicked += (_, _) => OpenApps();
+        _tray.Clicked += (_, _) => Open(MainWindow.AppsKey);
         TrayIcon.SetIcons(this, [_tray]);
     }
 
@@ -158,38 +177,27 @@ public partial class App : Application
             ? $"Postern{Profile.DisplaySuffix}{PipeSuffix}: {_pendingPrompts} app(s) waiting for approval"
             : $"Postern{Profile.DisplaySuffix}{PipeSuffix}: {approved} app(s) allowed") + (update is null ? "" : $"\nUpdate {update} available");
         if (_updateItem is not null)
-            _updateItem.Header = update is null ? "Check for updates…" : $"Update to {update}…";
+        {
+            _updateItem.Header = $"Update to {update}…";
+            _updateItem.IsVisible = update is not null;
+        }
     }
 
-    void OpenApps() => Open(ref _apps, () => new AppsWindow(_broker!));
-    void OpenCredentials() => Open(ref _credentials, () => new CredentialsWindow(_broker!));
-    void OpenAudit() => Open(ref _audit, () => new AuditWindow(_broker!));
-    void OpenUpdates() => Open(ref _updates, () => new UpdateWindow(_updater, () => _desktop?.Shutdown(Program.ExitUpdating)));
-
-    static void Open<T>(ref T? slot, Func<T> create) where T : Window
+    void Open(string page)
     {
-        if (slot is { } existing)
+        if (_main is { } existing)
         {
+            existing.NavigateTo(page);
+            if (existing.WindowState == WindowState.Minimized)
+                existing.WindowState = WindowState.Normal;
             existing.Activate();
             return;
         }
-        var window = create();
-        slot = window;
-        var captured = window;
-        window.Closed += (_, _) => ClearSlot(captured);
+        var window = new MainWindow(_broker!, _updater, () => _desktop?.Shutdown(Program.ExitUpdating), page);
+        _main = window;
+        window.Closed += (_, _) => _main = null;
         window.Show();
         window.Activate();
-    }
-
-    // Open() can't capture a ref parameter in the Closed handler, so windows clear themselves through this.
-    static void ClearSlot(Window window)
-    {
-        if (Current is not App app)
-            return;
-        if (ReferenceEquals(app._apps, window)) app._apps = null;
-        if (ReferenceEquals(app._credentials, window)) app._credentials = null;
-        if (ReferenceEquals(app._audit, window)) app._audit = null;
-        if (ReferenceEquals(app._updates, window)) app._updates = null;
     }
 
     static Task ShowFatal(string title, string message)

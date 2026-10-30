@@ -8,6 +8,7 @@ namespace Postern.App.Views;
 /// <summary>Palette and small control factories. Windows are built in code, like Shrike's, so there's no binding setup to get wrong.</summary>
 internal static class Ui
 {
+    public static readonly IBrush Sunken = Brush("#101315");
     public static readonly IBrush Background = Brush("#15181B");
     public static readonly IBrush Panel = Brush("#1E2226");
     public static readonly IBrush Border = Brush("#2E343A");
@@ -81,6 +82,12 @@ internal static class Ui
         Padding = new Thickness(12),
         Child = child,
     };
+
+    public static Control Top(Control control)
+    {
+        DockPanel.SetDock(control, Dock.Top);
+        return control;
+    }
 
     public static Window Window(string title, double width, double height) => new()
     {

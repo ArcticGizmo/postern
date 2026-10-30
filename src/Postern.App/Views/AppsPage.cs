@@ -1,36 +1,28 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
-using Avalonia.Threading;
 using Postern.Broker;
 using Postern.Core.Apps;
 
 namespace Postern.App.Views;
 
 /// <summary>Every registration, newest first. Approved apps can be revoked; the effect is immediate (next request).</summary>
-internal sealed class AppsWindow : Window
+internal sealed class AppsPage : UserControl
 {
     readonly BrokerRuntime _broker;
     readonly StackPanel _list = new() { Spacing = 10 };
     readonly CheckBox _showOld = new() { Content = "Show denied, revoked and replaced", Foreground = Ui.Muted };
 
-    public AppsWindow(BrokerRuntime broker)
+    public AppsPage(BrokerRuntime broker)
     {
         _broker = broker;
-        Title = "Postern: apps";
-        Width = 720;
-        Height = 620;
-        Background = Ui.Background;
-        WindowStartupLocation = WindowStartupLocation.CenterScreen;
-        Icon = TrayArt.WindowIcon();
-
         _showOld.IsCheckedChanged += (_, _) => Refresh();
         Content = new DockPanel
         {
             Margin = new Thickness(18),
             Children =
             {
-                Top(new StackPanel
+                Ui.Top(new StackPanel
                 {
                     Spacing = 6,
                     Margin = new Thickness(0, 0, 0, 12),
@@ -39,21 +31,10 @@ internal sealed class AppsWindow : Window
                 new ScrollViewer { Content = _list },
             },
         };
-
-        broker.Registrations.Changed += OnChanged;
-        Closed += (_, _) => broker.Registrations.Changed -= OnChanged;
         Refresh();
     }
 
-    static Control Top(Control c)
-    {
-        DockPanel.SetDock(c, Dock.Top);
-        return c;
-    }
-
-    void OnChanged() => Dispatcher.UIThread.Post(Refresh);
-
-    void Refresh()
+    public void Refresh()
     {
         _list.Children.Clear();
         var showOld = _showOld.IsChecked == true;

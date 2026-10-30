@@ -95,6 +95,10 @@ if it turns out to matter.
 
 A provider definition is a base URL, an auth strategy, rate-limit header names and optional TLS settings.
 
+What got built is a **connection**: a name, a base URL, the fields of its credential and where each goes on the
+request, usually made from a built-in template. Several connections can share a template, which is how one service
+gets several accounts. See [`connections.md`](connections.md).
+
 ## Request shape
 
 ```

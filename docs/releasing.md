@@ -21,8 +21,16 @@ You can also download Setup from the release page yourself and check it with `Ge
 
 ## Cutting a release
 
+With Claude Code, two skills (in `.claude/skills/`) do the whole thing:
+
+- **`/bump-version`** sets the next patch version in `Directory.Build.props` (from the last tag, not the props file) and writes its `CHANGELOG.md` section from the commits since that tag. It doesn't commit; review the entries, then commit both files on the branch.
+- **`/release-next-version`** opens a PR for the branch, waits for CI, squash-merges, tags the new `main` head with the props version, and watches the Release workflow until the GitHub Release is up with its assets. It stops at the first failure and says what state it left things in.
+
+By hand:
+
 1. Push a tag: `git tag v0.2.0; git push origin v0.2.0`. The tag is the version, and it has to be
-   `vMAJOR.MINOR.PATCH`.
+   `vMAJOR.MINOR.PATCH`. Keep `<Version>` in `Directory.Build.props` and a `## [v0.2.0]` section in `CHANGELOG.md`
+   in step with it.
 2. `.github/workflows/release.yml` then:
    - runs the tests (a red test never ships)
    - publishes `Postern.exe` and `postern-cli.exe` self-contained into one folder, stamped with the version
@@ -54,6 +62,7 @@ You can also download Setup from the release page yourself and check it with `Ge
 | Credentials (Credential Manager) | `postern:<provider>:<account>` | `postern-dev:<provider>:<account>` |
 | Start at login | `HKCU\…\Run\Postern` | `HKCU\…\Run\Postern (Dev)` |
 | Tray | Postern | Postern (Dev) |
+| Icon | Purple (`postern.svg` as drawn) | Pink (both turn amber while an approval waits) |
 
 **Dev builds are a separate profile**, like Perch (Dev), so one can run next to an installed Postern without either
 touching the other. A Debug postern-cli and the Debug shadow apps follow the same rule, so they talk to the dev
@@ -68,17 +77,21 @@ touched.
 
 ## Updates
 
-- **Tray → Check for updates…** checks GitHub and offers the newer version, saying what the restart will do. Nothing
-  is applied until you click **Update and restart**.
-- **A background check** runs 30 seconds after start and then every 6 hours. It only relabels the tray item
-  ("Update to 0.3.0…") and the tooltip. Anonymous GitHub API calls are limited per IP, and an office NAT shares
-  one IP.
+- **The Updates page** checks GitHub the first time it's opened (and on **Check again**), and offers the newer
+  version, saying what the restart will do. Nothing is applied until you click **Update and restart**.
+- **A background check** runs 30 seconds after start and then every 6 hours. It only adds an "Update to 0.3.0…"
+  item to the tray menu, a "new" badge on the Updates page, and a line in the tooltip. Anonymous GitHub API calls
+  are limited per IP, and an office NAT shares one IP.
 - **Applying:** Postern downloads the package, hands over to Velopack's updater, and exits with code 6. The
   supervisor treats 6 as "stop", so nothing holds the install folder. Velopack swaps `current\` and starts
   `Postern.exe --supervise` again (or plain `Postern.exe` if it wasn't supervised).
 - **Clients** see a few seconds of "Postern isn't answering" and reconnect through their retry. Approval requests
   still waiting are denied, and those apps ask again.
 - **A copy run from a build folder** isn't installed, so the window says so and nothing is checked.
+- **What's new:** `CHANGELOG.md` is built into `Postern.exe`. The Changelog page shows all of it. Each start records
+  its version in `settings.json` in the data folder, and the first start on a newer version opens a "What's new"
+  window with the sections in between (so skipped versions are included). A fresh install shows nothing, and so
+  does a version without a section. The page's checkbox, or the window's **Don't show again**, turns it off.
 
 Updates aren't code-signed (nor is anything else yet), so trust rests on the GitHub repo and its release workflow.
 That's why applying is always the user's click, never automatic.

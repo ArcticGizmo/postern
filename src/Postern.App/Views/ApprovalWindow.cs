@@ -42,8 +42,11 @@ internal sealed class ApprovalWindow : Window
     readonly DispatcherTimer _arm;
     DateTimeOffset _armsAt;
 
-    public ApprovalWindow()
+    readonly Func<string, string?> _describeConnection;
+
+    public ApprovalWindow(Func<string, string?>? describeConnection = null)
     {
+        _describeConnection = describeConnection ?? (_ => null);
         Title = "Postern: allow an app?";
         Width = 560;
         SizeToContent = SizeToContent.Height;
@@ -193,7 +196,7 @@ internal sealed class ApprovalWindow : Window
         }
     }
 
-    static Control Describe(ApprovalRequest request)
+    Control Describe(ApprovalRequest request)
     {
         var signed = request.SignatureTrusted
             ? Ui.Text(request.Signer ?? "Signed", Ui.Ok)
@@ -214,8 +217,9 @@ internal sealed class ApprovalWindow : Window
             },
         }));
         body.Children.Add(Ui.Field("It asks for", ScopeList(request)));
+        body.Children.Add(Ui.Field("Through", ConnectionList(request)));
         body.Children.Add(Ui.Text("Postern adds your stored credential to each allowed request. The app never sees the secret. " +
-                                  "You can revoke this at any time from the tray (Apps…).", Ui.Muted, 12));
+                                  "You can revoke this at any time under Apps (click the tray icon).", Ui.Muted, 12));
         return body;
     }
 
@@ -232,6 +236,21 @@ internal sealed class ApprovalWindow : Window
             foreach (var gone in request.PreviousScopes.Where(s => !request.Scopes.Any(n => n.ToString() == s.ToString())))
                 list.Children.Add(Ui.Code("- " + gone, Ui.Muted));
         return Ui.Card(list);
+    }
+
+    // Which account and host each connection name means, since "github-work" is only a name the app chose to send.
+    Control ConnectionList(ApprovalRequest request)
+    {
+        var list = new StackPanel { Spacing = 4 };
+        var names = request.Scopes.Select(s => s.Provider).Distinct().ToList();
+        var width = names.Max(n => n.Length);
+        foreach (var name in names)
+        {
+            var described = _describeConnection(name);
+            list.Children.Add(Ui.Code($"{name.PadRight(width)}  {described ?? "not set up in Postern: its requests fail until you add it"}",
+                described is null ? Ui.Warning : Ui.Muted));
+        }
+        return list;
     }
 
     protected override void OnOpened(EventArgs e)

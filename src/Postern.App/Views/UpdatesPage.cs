@@ -9,44 +9,52 @@ using Velopack;
 namespace Postern.App.Views;
 
 /// <summary>
-/// Tray → Check for updates. Checks when it opens, then offers the update with what it will do to running apps
-/// spelled out, since Postern sits in the request path of all of them.
+/// Checks the first time it's shown, then offers the update with what it will do to running apps spelled out, since
+/// Postern sits in the request path of all of them.
 /// </summary>
-internal sealed class UpdateWindow : Window
+internal sealed class UpdatesPage : UserControl
 {
     readonly Updater _updater;
     readonly Action _shutDownForUpdate;
-    readonly bool _checkOnOpen;
-    readonly StackPanel _body = new() { Spacing = 14, Margin = new Thickness(22, 20) };
+    readonly StackPanel _body = new() { Spacing = 14, Margin = new Thickness(18), MaxWidth = 560, HorizontalAlignment = HorizontalAlignment.Left };
+    bool _checked;
+    bool _busy;
 
-    public UpdateWindow(Updater updater, Action shutDownForUpdate, bool checkOnOpen = true)
+    public UpdatesPage(Updater updater, Action shutDownForUpdate)
     {
         _updater = updater;
         _shutDownForUpdate = shutDownForUpdate;
-        _checkOnOpen = checkOnOpen;
-        Title = "Postern: updates";
-        Width = 500;
-        SizeToContent = SizeToContent.Height;
-        CanResize = false;
-        WindowStartupLocation = WindowStartupLocation.CenterScreen;
-        Background = Ui.Background;
-        Icon = TrayArt.WindowIcon();
-        Content = _body;
+        Content = new ScrollViewer { Content = _body };
+        ShowCurrent();
     }
 
-    protected override async void OnOpened(EventArgs e)
+    /// <summary>Called each time the page is selected. Only the first visit asks the feed; the background check covers the rest.</summary>
+    public void Shown()
     {
-        base.OnOpened(e);
-        if (!_checkOnOpen)
+        if (_busy)
             return;
         if (!_updater.IsInstalled)
-        {
             ShowNotInstalled();
-            return;
-        }
+        else if (_updater.Available is { } update)
+            ShowAvailable(update.TargetFullRelease.Version.ToString(), update);
+        else if (!_checked)
+            _ = Check();
+    }
 
+    /// <summary>The background check found (or lost) an update while the window was open.</summary>
+    public void AvailableChanged()
+    {
+        if (!_busy && _updater.Available is { } update)
+            ShowAvailable(update.TargetFullRelease.Version.ToString(), update);
+    }
+
+    async Task Check()
+    {
+        _busy = true;
         ShowChecking();
         var result = await _updater.CheckAsync();
+        _busy = false;
+        _checked = true;
         if (result.Error is { } error)
             ShowError("Postern couldn't check for updates.", error);
         else if (result.Update is { } update)
@@ -55,18 +63,20 @@ internal sealed class UpdateWindow : Window
             ShowUpToDate();
     }
 
+    void ShowCurrent() => Show("Updates", [Ui.Text($"You have Postern {_updater.CurrentVersion}.", Ui.Muted)], CheckButton("Check for updates"));
+
     public void ShowChecking() => Show("Checking for updates…", [Ui.Text($"You have Postern {_updater.CurrentVersion}.", Ui.Muted)]);
 
-    public void ShowUpToDate() => Show("Postern is up to date", [Ui.Text($"{_updater.CurrentVersion} is the latest release.", Ui.Muted)], CloseButton());
+    public void ShowUpToDate() => Show("Postern is up to date", [Ui.Text($"{_updater.CurrentVersion} is the latest release.", Ui.Muted)], CheckButton("Check again"));
 
     public void ShowNotInstalled() => Show("This copy can't update itself",
     [
         Ui.Text("It's running from a build folder, not an installed copy:", Ui.Muted),
         Ui.Code(Environment.ProcessPath ?? "?"),
         Ui.Text($"Install a release from {Updater.RepoUrl}/releases to get updates here.", Ui.Muted),
-    ], CloseButton());
+    ]);
 
-    public void ShowError(string heading, string detail) => Show(heading, [Ui.Text(detail, Ui.Warning)], CloseButton());
+    public void ShowError(string heading, string detail) => Show(heading, [Ui.Text(detail, Ui.Warning)], CheckButton("Try again"));
 
     /// <summary><paramref name="update"/> is null only for a snapshot render, which can't apply anything.</summary>
     public void ShowAvailable(string version, UpdateInfo? update)
@@ -76,7 +86,6 @@ internal sealed class UpdateWindow : Window
         var buttons = new List<Button>();
         if (Updater.LocalFeed is null)
             buttons.Add(Ui.Button("Release notes", () => OpenReleaseNotes(version)));
-        buttons.Add(Ui.Button("Later", Close));
         buttons.Add(apply);
 
         Show($"Postern {version} is available",
@@ -104,6 +113,7 @@ internal sealed class UpdateWindow : Window
 
     async void Apply(string version, UpdateInfo update)
     {
+        _busy = true;
         ShowDownloading(version, 0);
         try
         {
@@ -111,6 +121,7 @@ internal sealed class UpdateWindow : Window
         }
         catch (Exception ex)
         {
+            _busy = false;
             ShowError("The update couldn't be prepared.", ex.Message);
             return;
         }
@@ -120,7 +131,12 @@ internal sealed class UpdateWindow : Window
     static void OpenReleaseNotes(string version) =>
         Process.Start(new ProcessStartInfo($"{Updater.RepoUrl}/releases/tag/v{version}") { UseShellExecute = true });
 
-    Button CloseButton() => Ui.Button("Close", Close, primary: true);
+    Button CheckButton(string text)
+    {
+        var button = Ui.Button(text, () => _ = Check(), primary: true);
+        button.IsEnabled = _updater.IsInstalled;
+        return button;
+    }
 
     void Show(string heading, Control[] lines, params Button[] buttons)
     {
@@ -130,7 +146,7 @@ internal sealed class UpdateWindow : Window
             _body.Children.Add(line);
         if (buttons.Length == 0)
             return;
-        var row = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Spacing = 10 };
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
         foreach (var button in buttons)
             row.Children.Add(button);
         _body.Children.Add(row);

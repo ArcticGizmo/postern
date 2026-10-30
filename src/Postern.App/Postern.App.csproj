@@ -9,7 +9,15 @@
     <Description>Local credential broker: apps call providers through Postern, which holds the secrets.</Description>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- The .exe icon (taskbar, Explorer, installer), generated from postern.svg by tools/gen-icons.ps1. -->
+    <ApplicationIcon>Assets/postern.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets/**" />
+    <!-- Read at runtime for the Changelog page and the "What's new" window after an update. -->
+    <EmbeddedResource Include="..\..\CHANGELOG.md" LogicalName="Postern.CHANGELOG.md" />
+  </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="Postern.Tests" />
