@@ -15,6 +15,8 @@
 
   <ItemGroup>
     <AvaloniaResource Include="Assets/**" />
+    <!-- Read at runtime for the Changelog page and the "What's new" window after an update. -->
+    <EmbeddedResource Include="..\..\CHANGELOG.md" LogicalName="Postern.CHANGELOG.md" />
   </ItemGroup>
 
   <ItemGroup>

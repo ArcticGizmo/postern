@@ -21,8 +21,16 @@ You can also download Setup from the release page yourself and check it with `Ge
 
 ## Cutting a release
 
+With Claude Code, two skills (in `.claude/skills/`) do the whole thing:
+
+- **`/bump-version`** sets the next patch version in `Directory.Build.props` (from the last tag, not the props file) and writes its `CHANGELOG.md` section from the commits since that tag. It doesn't commit; review the entries, then commit both files on the branch.
+- **`/release-next-version`** opens a PR for the branch, waits for CI, squash-merges, tags the new `main` head with the props version, and watches the Release workflow until the GitHub Release is up with its assets. It stops at the first failure and says what state it left things in.
+
+By hand:
+
 1. Push a tag: `git tag v0.2.0; git push origin v0.2.0`. The tag is the version, and it has to be
-   `vMAJOR.MINOR.PATCH`.
+   `vMAJOR.MINOR.PATCH`. Keep `<Version>` in `Directory.Build.props` and a `## [v0.2.0]` section in `CHANGELOG.md`
+   in step with it.
 2. `.github/workflows/release.yml` then:
    - runs the tests (a red test never ships)
    - publishes `Postern.exe` and `postern-cli.exe` self-contained into one folder, stamped with the version
@@ -80,6 +88,10 @@ touched.
 - **Clients** see a few seconds of "Postern isn't answering" and reconnect through their retry. Approval requests
   still waiting are denied, and those apps ask again.
 - **A copy run from a build folder** isn't installed, so the window says so and nothing is checked.
+- **What's new:** `CHANGELOG.md` is built into `Postern.exe`. The Changelog page shows all of it. Each start records
+  its version in `settings.json` in the data folder, and the first start on a newer version opens a "What's new"
+  window with the sections in between (so skipped versions are included). A fresh install shows nothing, and so
+  does a version without a section. The page's checkbox, or the window's **Don't show again**, turns it off.
 
 Updates aren't code-signed (nor is anything else yet), so trust rests on the GitHub repo and its release workflow.
 That's why applying is always the user's click, never automatic.

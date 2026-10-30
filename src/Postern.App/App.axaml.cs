@@ -63,6 +63,7 @@ public partial class App : Application
             _updater.Start();
             if (_broker.Credentials.Read(Core.Providers.ProviderDefinition.GitHub.CredentialTarget) is null)
                 Open(MainWindow.ConnectionsKey); // first run: nothing works until there's a credential
+            ShowWhatsNewAfterUpdate();
         }
         catch (PipeInUseException ex)
         {
@@ -78,6 +79,48 @@ public partial class App : Application
             Environment.ExitCode = Program.ExitBrokerFailed;
             desktop.Shutdown(Program.ExitBrokerFailed);
         }
+    }
+
+    // The version is recorded on every start, not just after an update, so a fresh install or a downgrade shows
+    // nothing. If it can't be recorded, nothing is shown either: it would otherwise come back on every start.
+    void ShowWhatsNewAfterUpdate()
+    {
+        var dataDir = Program.Args.DataDirectory;
+        var settings = AppSettings.Load(dataDir);
+        var lastSeen = settings.LastSeenVersion;
+        if (lastSeen == BrokerRuntime.Version)
+            return;
+        settings.LastSeenVersion = BrokerRuntime.Version;
+        try
+        {
+            settings.Save(dataDir);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _log.LogWarning(ex, "Couldn't record the version in settings.json");
+            return;
+        }
+
+        if (lastSeen is null || !settings.ShowChangelogAfterUpdate || ChangelogMarkdown.LoadEmbedded() is not { } markdown)
+            return;
+        var sections = Core.Changelog.ChangelogParser.UnseenSince(markdown, lastSeen, BrokerRuntime.Version);
+        if (sections.Count == 0)
+            return;
+        var window = new WhatsNewWindow(lastSeen, sections, () =>
+        {
+            try
+            {
+                var latest = AppSettings.Load(dataDir);
+                latest.ShowChangelogAfterUpdate = false;
+                latest.Save(dataDir);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                _log.LogWarning(ex, "Couldn't save the changelog preference");
+            }
+        });
+        window.Show();
+        window.Activate();
     }
 
     void StopBroker()

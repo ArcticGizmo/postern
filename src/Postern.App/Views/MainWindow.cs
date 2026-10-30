@@ -23,6 +23,7 @@ internal sealed class MainWindow : Window
     public const string AuditKey = "audit";
     public const string GeneralKey = "general";
     public const string UpdatesKey = "updates";
+    public const string ChangelogKey = "changelog";
     public const string HowKey = "how";
 
     const double NavWidth = 190;
@@ -61,6 +62,7 @@ internal sealed class MainWindow : Window
         AddPage(nav, AuditKey, "Audit log", _audit);
         AddPage(nav, GeneralKey, "General", new GeneralPage());
         AddPage(nav, UpdatesKey, "Updates", _updates);
+        AddPage(nav, ChangelogKey, "Changelog", new ChangelogPage());
         AddPage(nav, HowKey, "How it works", _how);
 
         var rail = new Border

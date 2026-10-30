@@ -664,6 +664,13 @@ a new terminal, in the repo folder.
   `& $icli call --name e-test GET github/user` still works with no new prompt. Postern (Dev) carries on throughout.
   Result:
 
+- [ ] **E2.4** What's new. A local build only has a section to show if `CHANGELOG.md` has one for its version, so
+  before E2.1's `publish.ps1 0.1.1`, add a `## [v0.1.1] - <today>` section with a bullet or two (don't commit it).
+  **Expect:** after the restart in E2.3, a "What's new in Postern" window saying "Updated from v0.1.0 to v0.1.1."
+  with just that section. It isn't topmost. **Don't show again** closes it, and the installed copy's Changelog page
+  then has the checkbox unticked. Quit and start the installed copy again: no window. Revert `CHANGELOG.md`.
+  Result:
+
 ### E3. Update under the supervisor
 
 - [ ] **E3.1** In the installed copy: General → tick **Start Postern when I sign in to Windows**. Then:

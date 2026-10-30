@@ -134,7 +134,7 @@ To see the windows without launching the tray, `dotnet run --project tools\Poste
 |---|---|
 | `src/Postern.Core` | Policy: scopes, registrations, tokens, access decisions, audit and rate-limit models. No Windows/UI deps |
 | `src/Postern.Broker` | The request path: named-pipe Kestrel host, caller identity, YARP forwarding, Credential Manager, SQLite |
-| `src/Postern.App` | `Postern.exe`, the Avalonia tray app that hosts the broker (approval prompt; Apps, Connections, Audit log, General, Updates and How it works pages) |
+| `src/Postern.App` | `Postern.exe`, the Avalonia tray app that hosts the broker (approval prompt; Apps, Connections, Audit log, General, Updates, Changelog and How it works pages; "What's new" after an update) |
 | `src/Postern.Client` | The library apps reference: pipe handler with server verification, registration, DPAPI token |
 | `src/Postern.Cli` | `postern-cli`: register/call/status from scripts, and `credential set` |
 | `tests/Postern.Tests` | Unit tests plus end-to-end tests through a real pipe to a fake upstream |
@@ -148,7 +148,7 @@ To see the windows without launching the tray, `dotnet run --project tools\Poste
 
 ### Building a release (maintainers)
 
-Push a version tag (`git tag v0.2.0; git push origin v0.2.0`) and the release workflow tests, builds, packs and publishes it, with `SHA256SUMS.txt`. `.\scripts\publish.ps1 0.2.0` does the same locally into `releases\`. Details are in [`docs/releasing.md`](docs/releasing.md).
+In Claude Code, `/bump-version` sets the next version and writes its `CHANGELOG.md` section, and `/release-next-version` merges the branch and tags it. By hand: push a version tag (`git tag v0.2.0; git push origin v0.2.0`) and the release workflow tests, builds, packs and publishes it, with `SHA256SUMS.txt`. `.\scripts\publish.ps1 0.2.0` does the same locally into `releases\`. Details are in [`docs/releasing.md`](docs/releasing.md).
 
 ### Icons
 

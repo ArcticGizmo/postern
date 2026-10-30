@@ -48,7 +48,7 @@ internal sealed class GeneralPage : UserControl
                         Spacing = 10,
                         Children =
                         {
-                            Folder("Data folder", dataDir, "Approvals, the audit log and providers.json."),
+                            Folder("Data folder", dataDir, "Approvals, the audit log, providers.json and settings.json."),
                             Folder("Logs", Path.Combine(dataDir, "logs"), "One file a day. Request headers are never logged."),
                         },
                     }),

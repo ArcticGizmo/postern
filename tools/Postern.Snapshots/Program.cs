@@ -11,6 +11,7 @@ using Postern.Broker;
 using Postern.Broker.Credentials;
 using Postern.Core.Apps;
 using Postern.Core.Audit;
+using Postern.Core.Changelog;
 using Postern.Core.Providers;
 using Postern.Core.Scopes;
 
@@ -63,6 +64,9 @@ await session.Dispatch(() =>
     Save(Shell(broker, updater, MainWindow.UpdatesKey, p => p.ShowUpToDate()), "update-up-to-date");
     Save(Shell(broker, updater, MainWindow.UpdatesKey, p => p.ShowNotInstalled()), "update-not-installed");
     Save(Shell(broker, updater, MainWindow.UpdatesKey, p => p.ShowDownloading("0.3.0", 42)), "update-downloading");
+    Save(Shell(broker, updater, MainWindow.ChangelogKey), "changelog");
+    var changelog = ChangelogMarkdown.LoadEmbedded() ?? throw new InvalidOperationException("CHANGELOG.md isn't embedded");
+    Save(new WhatsNewWindow("0.0.0", ChangelogParser.UnseenSince(changelog, "0.0.0", "999.0.0"), () => { }), "whats-new");
 }, CancellationToken.None);
 
 Console.WriteLine($"Wrote snapshots to {output}");
