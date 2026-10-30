@@ -21,7 +21,7 @@ internal static class Supervisor
     public static int Run(AppArgs args, Action<string> log)
     {
         using var single = new Mutex(initiallyOwned: true, $@"Local\Postern-Supervisor-{args.PipeName}", out var first);
-        if (!first)
+        if (!first && !(args.ResetSandbox && Program.WaitForTurn(single)))
         {
             log("Another supervisor is already running for this pipe; exiting.");
             return 0;

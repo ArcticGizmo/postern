@@ -65,6 +65,7 @@ await session.Dispatch(() =>
     Save(Shell(broker, updater, MainWindow.UpdatesKey, p => p.ShowNotInstalled()), "update-not-installed");
     Save(Shell(broker, updater, MainWindow.UpdatesKey, p => p.ShowDownloading("0.3.0", 42)), "update-downloading");
     Save(Shell(broker, updater, MainWindow.ChangelogKey), "changelog");
+    Save(Shell(broker, updater, MainWindow.TestbedKey), $"testbed-{Profile.Kind.ToString().ToLowerInvariant()}");
     var changelog = ChangelogMarkdown.LoadEmbedded() ?? throw new InvalidOperationException("CHANGELOG.md isn't embedded");
     Save(new WhatsNewWindow("0.0.0", ChangelogParser.UnseenSince(changelog, "0.0.0", "999.0.0"), () => { }), "whats-new");
 

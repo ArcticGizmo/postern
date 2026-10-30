@@ -70,7 +70,7 @@ internal static class Program
             return Supervisor.Run(Args, message => Logs.CreateLogger("Postern.Supervisor").LogInformation("{Message}", message));
 
         using var single = new Mutex(initiallyOwned: true, $@"Local\Postern-{Args.PipeName}", out var first);
-        if (!first)
+        if (!first && !(Args.ResetSandbox && WaitForTurn(single)))
         {
             log.LogInformation("Postern is already running for pipe {Pipe}; exiting.", Args.PipeName);
             return 0;
@@ -96,6 +96,22 @@ internal static class Program
 
         // The shutdown code is what the supervisor reads: 0 (Quit) and ExitUpdating stop it, anything else restarts Postern.
         return BuildAvaloniaApp().StartWithClassicDesktopLifetime([]);
+    }
+
+    /// <summary>
+    /// A reset is started by the sandbox it replaces, which quits straight after, so it waits for that one to let go
+    /// rather than exiting as a second copy would.
+    /// </summary>
+    public static bool WaitForTurn(Mutex mutex)
+    {
+        try
+        {
+            return mutex.WaitOne(TimeSpan.FromSeconds(15));
+        }
+        catch (AbandonedMutexException)
+        {
+            return true; // the old one was killed rather than quitting; the mutex is ours all the same
+        }
     }
 
     /// <summary>The broker without a tray. Nobody can approve, so new registrations are denied (except dev auto-approve).</summary>

@@ -195,7 +195,7 @@ public partial class App : Application
             existing.Activate();
             return;
         }
-        var window = new MainWindow(_broker!, _updater, () => _desktop?.Shutdown(Program.ExitUpdating), page);
+        var window = new MainWindow(_broker!, _updater, () => _desktop?.Shutdown(Program.ExitUpdating), page, () => _desktop?.Shutdown(0));
         _main = window;
         window.Closed += (_, _) => _main = null;
         window.Show();
