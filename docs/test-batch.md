@@ -768,6 +768,51 @@ In Postern (Dev), started with `.\run.cmd`. `$cli` as in A0.7.
 
 ---
 
+## Session G: the test bed
+
+Branch `feat/sallyport-testbed`. The headless run (`scripts\testbed-run.ps1`) is already checked; these are the windows. See `docs/testbed.md`.
+
+- [ ] **G1** Quit Postern (Dev). Run `.\testbed.cmd`.
+  **Expect:** three new things: a sand-coloured tray icon (**Postern (Sandbox)**), a minimised fake-upstream console, and the Sallyport window. Within a few seconds Postern asks to approve `sallyport` with 14 scopes. Allow it.
+  Result:
+
+- [ ] **G2** In Sallyport, **Run all**.
+  **Expect:** every scenario's dot turns green, and the log says "run all: all 20 matched". Click a few: the request, the response, what fake-upstream received and the verdict all make sense.
+  Result:
+
+- [ ] **G3** Watch the soak strip for 20 seconds, then **Crash Postern**.
+  **Expect:** a red cell or two, maybe an amber one, then green again; the log says "Postern is back as pid N". No new approval prompt.
+  Result:
+
+- [ ] **G4** Quit Postern (Sandbox) from its tray menu.
+  **Expect:** red cells that stay red. Then **Start Postern**: green again, same approval.
+  Result:
+
+- [ ] **G5** In Postern (Sandbox): Apps → revoke `sallyport`.
+  **Expect:** sand cells (`app-revoked`) straight away, the token pill says revoked, and an **Ask Postern** button appears. Click it and allow: green again.
+  Result:
+
+- [ ] **G6** Postern (Sandbox) → Connections → github → Replace, and paste anything starting `ghp_` followed by 36 letters (make it up).
+  **Expect:** "Not saved: This is the sandbox Postern, and that looks like a real GitHub token…". Then **Edit as JSON** and point `jira` at `https://example.atlassian.net`: refused, naming jira and that host.
+  Result:
+
+- [ ] **G7** Postern (Sandbox) → **Testbed**: stop fake-upstream, then start it again.
+  **Expect:** Sallyport's fake-upstream pill goes red, then green. While it's stopped, the soak strip shows `upstream-…` refusals in sand.
+  Result:
+
+- [ ] **G8** **Testbed → Reset sandbox…** → Reset.
+  **Expect:** Postern (Sandbox) disappears and comes back within a few seconds; Sallyport asks to be approved again (a reset forgets every approval). Allow it.
+  Result:
+
+- [ ] **G9** Open Postern (Dev) (`.\run.cmd`, after quitting the sandbox if the build complains) → **Testbed**.
+  **Expect:** it explains the test bed runs against the sandbox, and offers **Start Postern (Sandbox)**; no Sallyport or reset buttons.
+  Result:
+
+- [ ] **G10** Did CrowdStrike or Defender react to anything: the crash drill kills a process, and the Testbed page starts and stops them.
+  Result:
+
+---
+
 ## Decisions
 
 | Question | Decision | Where |
@@ -786,4 +831,7 @@ In Postern (Dev), started with `.\run.cmd`. `$cli` as in A0.7.
 | Several accounts for one service | **Named connections.** Each account is its own connection (`github`, `github-work`) with its own credential; scopes name the connection. Explicit, and one app can use several | `Connections`, `ProviderTemplates` |
 | Can a credential follow a repointed connection? | **No.** Each credential records the origin it was entered for, and the proxy only sends it there. Repointing means entering it again | `ProviderDefinition.DecodeCredential` |
 | Where are connections edited? | **In the app, in dialogs:** templates through a form, everything else as JSON in an editor that validates before saving. Every change opens a modal, so the page never reflows. Changes apply without a restart | `ConnectionsPage`, `Dialog` |
+| A safe Postern to test against? | **A third profile, Postern (Sandbox).** Dev plus `--pipe`/`--data-dir` still shared Dev's credentials and could reach real hosts; the sandbox only reaches loopback and refuses real-looking tokens | `Profile`, `Sandbox`, `Connections.OutsideSandbox` |
+| May Sallyport kill Postern? | **Yes, the sandbox's only,** after checking the pid is the exe that published itself for `postern-sandbox` | `Target.Crash` |
+| Approve Sallyport automatically? | **In the headless run only** (`--dev-auto-approve`); the window goes through the real prompt, which is part of what's tested | `scripts/testbed-run.ps1` |
 | Merge order | **No merging during greenfield work.** Postern keeps building on `poc/walking-skeleton`; Perch stays on `spike/postern-transport` | |
